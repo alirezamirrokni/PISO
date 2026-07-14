@@ -4,12 +4,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-from tqdm.auto import tqdm
 
 from src.cache import CacheManager, build_fingerprint
 from src.config import load_config, save_config
 from src.methods import METHODS
 from src.problem import PricingProblem, ProblemSpec
+from src.progress import progress_bar, reset_bar
 from src.report import write_outputs
 
 
@@ -41,7 +41,7 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
         output_dir / "config.yaml",
     ]
     fingerprint = build_fingerprint(project_root, config)
-    cache = CacheManager(output_dir, fingerprint, reset=reset_cache)
+    cache = CacheManager(output_dir, fingerprint, config, reset=reset_cache)
     if cache.is_complete(required_outputs):
         print(f"Complete cache found in {output_dir}. No experiment was rerun.")
         return
@@ -57,36 +57,40 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
     total_jobs = len(experiment["weeks"]) * simulations * len(method_names)
     results: list[dict] = []
 
-    with tqdm(total=total_jobs, desc="Experiments", unit="job") as overall:
+    overall = progress_bar(total=total_jobs, desc="Experiments", unit="job", leave=True)
+    samples = progress_bar(
+        total=context.max_samples,
+        desc="Current method",
+        unit="sample",
+        leave=False,
+    )
+    try:
         for week_value in experiment["weeks"]:
             week_id = str(week_value).zfill(2)
             for run_index in range(simulations):
                 problem = PricingProblem.from_week(project_root / "data", week_id, rng, spec)
                 for method_name in method_names:
-                    overall.set_description(f"{weeks[week_id]} | run {run_index + 1}/{simulations} | {method_name}")
+                    job_label = f"{weeks[week_id]} | run {run_index + 1}/{simulations} | {method_name}"
+                    overall.set_description(job_label, refresh=False)
                     job_cache = cache.job(week_id, run_index, method_name)
                     saved = job_cache.load_final()
                     if saved is not None:
                         trace = saved["trace"]
                         rng.set_state(saved["rng_state"])
-                        overall.set_postfix(status="cached", refresh=False)
+                        reset_bar(samples, context.max_samples, context.max_samples, "Current method")
+                        status = "cached"
                     else:
                         progress_saved = job_cache.load_progress()
                         initial = 0 if progress_saved is None else min(
                             int(progress_saved["state"]["sample_count"]), context.max_samples
                         )
-                        with tqdm(
-                            total=context.max_samples,
-                            initial=initial,
-                            desc="samples",
-                            unit="sample",
-                            leave=False,
-                        ) as sample_bar:
-                            trace = METHODS[method_name](config["methods"][method_name]).run(
-                                problem, rng, context, job_cache, sample_bar
-                            )
+                        reset_bar(samples, context.max_samples, initial, "Current method")
+                        trace = METHODS[method_name](config["methods"][method_name]).run(
+                            problem, rng, context, job_cache, samples
+                        )
                         job_cache.save_final(trace, rng.get_state())
-                        overall.set_postfix(status="resumed" if progress_saved else "computed", refresh=False)
+                        status = "resumed" if progress_saved else "computed"
+
                     results.append(
                         {
                             "week_id": week_id,
@@ -96,7 +100,11 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
                             "trace": trace,
                         }
                     )
+                    overall.set_postfix(status=status, refresh=False)
                     overall.update(1)
+    finally:
+        samples.close()
+        overall.close()
 
     write_outputs(results, method_names, int(experiment["figure_run"]), output_dir)
     save_config(config, output_dir / "config.yaml")

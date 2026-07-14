@@ -48,8 +48,8 @@ def save_step(cache, state: dict[str, Any], rng: np.random.RandomState, progress
     cache.save_progress(state, rng.get_state())
     if progress is not None:
         target = min(int(state["sample_count"]), int(progress.total))
-        progress.update(max(0, target - int(progress.n)))
         progress.set_postfix(iteration=int(state["iteration"]), refresh=False)
+        progress.update(max(0, target - int(progress.n)))
 
 
 def finish(state: dict[str, Any]) -> Trace:

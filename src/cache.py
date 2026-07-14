@@ -1,15 +1,21 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import os
-import pickle
+import re
 import shutil
+import sys
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 
-CACHE_SCHEMA = 2
+from src.methods.common import Trace
+
+
+CACHE_SCHEMA = 3
 
 
 def build_fingerprint(project_root: Path, config: dict[str, Any]) -> str:
@@ -31,104 +37,263 @@ def build_fingerprint(project_root: Path, config: dict[str, Any]) -> str:
     return digest.hexdigest()
 
 
+def _safe(value: Any) -> str:
+    text = str(value)
+    text = text.replace("-", "m").replace(".", "p").replace("+", "plus")
+    return re.sub(r"[^A-Za-z0-9_]+", "-", text).strip("-")
+
+
+def _run_tag(config: dict[str, Any]) -> str:
+    exp = config["experiment"]
+    weeks = "-".join(str(value).zfill(2) for value in exp["weeks"])
+    return (
+        f"seed{_safe(exp['seed'])}"
+        f"_budget{_safe(exp['max_samples'])}"
+        f"_metric{_safe(exp['metric_samples'])}"
+        f"_sims{_safe(exp['simulations'])}"
+        f"_weeks{weeks}"
+    )
+
+
+def _method_tag(method: str, params: dict[str, Any]) -> str:
+    labels = {
+        "mu0": "mu0",
+        "mu": "mu",
+        "mu_min": "mumin",
+        "beta0": "beta0",
+        "beta_decay": "bdecay",
+        "mu_decay": "mdecay",
+        "alpha0": "alpha0",
+        "alpha_damping": "adamp",
+        "batch_initial": "batch0",
+        "batch_increment": "batchinc",
+        "window": "window",
+        "initial_samples": "init",
+        "s_max": "smax",
+        "M": "M",
+    }
+    parts = [method]
+    for key, label in labels.items():
+        if key in params:
+            parts.append(f"{label}{_safe(params[key])}")
+    return "_".join(parts)
+
+
+def _encode(value: Any) -> Any:
+    if isinstance(value, np.ndarray):
+        return {
+            "__type__": "ndarray",
+            "dtype": str(value.dtype),
+            "shape": list(value.shape),
+            "data": value.tolist(),
+        }
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        return float(value)
+    if isinstance(value, tuple):
+        return {"__type__": "tuple", "items": [_encode(item) for item in value]}
+    if isinstance(value, list):
+        return [_encode(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _encode(item) for key, item in value.items()}
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    raise TypeError(f"Unsupported cache value type: {type(value).__name__}")
+
+
+def _decode(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_decode(item) for item in value]
+    if isinstance(value, dict):
+        marker = value.get("__type__")
+        if marker == "ndarray":
+            array = np.asarray(value["data"], dtype=np.dtype(value["dtype"]))
+            return array.reshape(tuple(value["shape"]))
+        if marker == "tuple":
+            return tuple(_decode(item) for item in value["items"])
+        return {key: _decode(item) for key, item in value.items()}
+    return value
+
+
+def _set_csv_field_limit() -> None:
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
+def _write_payload(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(path.stem + ".tmp.csv")
+    with temp.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["key", "value"])
+        writer.writeheader()
+        for key, value in payload.items():
+            writer.writerow(
+                {
+                    "key": key,
+                    "value": json.dumps(_encode(value), separators=(",", ":"), ensure_ascii=False),
+                }
+            )
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp, path)
+
+
+def _read_payload(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    _set_csv_field_limit()
+    try:
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            if reader.fieldnames != ["key", "value"]:
+                raise ValueError("unexpected columns")
+            payload = {
+                row["key"]: _decode(json.loads(row["value"]))
+                for row in reader
+                if row.get("key") and row.get("value") is not None
+            }
+    except (OSError, csv.Error, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        path.unlink(missing_ok=True)
+        return None
+    return payload
+
+
 class CacheManager:
-    def __init__(self, output_dir: Path, fingerprint: str, reset: bool = False) -> None:
+    def __init__(
+        self,
+        output_dir: Path,
+        fingerprint: str,
+        config: dict[str, Any],
+        reset: bool = False,
+    ) -> None:
         self.output_dir = output_dir
-        self.root = output_dir / ".cache"
+        self.root = output_dir / "cache"
         self.fingerprint = fingerprint
-        self.manifest_path = self.root / "manifest.json"
+        self.config = config
+        self.run_tag = _run_tag(config)
+        self.manifest_path = self.root / f"manifest_{self.run_tag}.csv"
 
         if reset and self.root.exists():
             shutil.rmtree(self.root)
         self.root.mkdir(parents=True, exist_ok=True)
-        for temp in self.root.glob("*.tmp"):
+        for temp in self.root.glob("*.tmp.csv"):
             temp.unlink(missing_ok=True)
         self._check_manifest()
 
     def _check_manifest(self) -> None:
-        if self.manifest_path.exists():
-            try:
-                manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                manifest = {}
-            if manifest.get("fingerprint") != self.fingerprint:
-                shutil.rmtree(self.root)
-                self.root.mkdir(parents=True, exist_ok=True)
-                self.manifest_path = self.root / "manifest.json"
-                self._write_json(
-                    self.manifest_path,
-                    {"schema": CACHE_SCHEMA, "fingerprint": self.fingerprint, "complete": False},
-                )
-        else:
-            self._write_json(
-                self.manifest_path,
-                {"schema": CACHE_SCHEMA, "fingerprint": self.fingerprint, "complete": False},
-            )
+        manifest = _read_payload(self.manifest_path)
+        if manifest is not None and manifest.get("fingerprint") == self.fingerprint:
+            return
 
-    @staticmethod
-    def _atomic_pickle(path: Path, value: Any) -> None:
-        temp = path.with_suffix(path.suffix + ".tmp")
-        with temp.open("wb") as handle:
-            pickle.dump(value, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        os.replace(temp, path)
-
-    @staticmethod
-    def _write_json(path: Path, value: dict[str, Any]) -> None:
-        temp = path.with_suffix(path.suffix + ".tmp")
-        temp.write_text(json.dumps(value, indent=2), encoding="utf-8")
-        os.replace(temp, path)
+        for path in self.root.glob(f"{self.run_tag}__*.csv"):
+            path.unlink(missing_ok=True)
+        self.manifest_path.unlink(missing_ok=True)
+        _write_payload(
+            self.manifest_path,
+            {
+                "schema": CACHE_SCHEMA,
+                "fingerprint": self.fingerprint,
+                "complete": False,
+                "run_tag": self.run_tag,
+            },
+        )
 
     def job(self, week_id: str, run_index: int, method: str) -> "JobCache":
-        return JobCache(self.root / f"{week_id}_{run_index:03d}_{method}")
+        method_params = self.config["methods"][method]
+        filename = (
+            f"{self.run_tag}"
+            f"__week{week_id}"
+            f"_run{run_index + 1:03d}"
+            f"_{_method_tag(method, method_params)}.csv"
+        )
+        return JobCache(self.root / filename, self.fingerprint)
 
     def is_complete(self, required_outputs: list[Path]) -> bool:
-        manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
-        return bool(manifest.get("complete")) and all(path.is_file() and path.stat().st_size > 0 for path in required_outputs)
+        manifest = _read_payload(self.manifest_path)
+        return bool(manifest and manifest.get("complete")) and all(
+            path.is_file() and path.stat().st_size > 0 for path in required_outputs
+        )
 
     def mark_complete(self) -> None:
-        self._write_json(
+        _write_payload(
             self.manifest_path,
-            {"schema": CACHE_SCHEMA, "fingerprint": self.fingerprint, "complete": True},
+            {
+                "schema": CACHE_SCHEMA,
+                "fingerprint": self.fingerprint,
+                "complete": True,
+                "run_tag": self.run_tag,
+            },
         )
 
 
 class JobCache:
-    def __init__(self, prefix: Path) -> None:
-        self.progress_path = prefix.with_suffix(".progress.pkl")
-        self.final_path = prefix.with_suffix(".final.pkl")
+    def __init__(self, path: Path, fingerprint: str) -> None:
+        self.path = path
+        self.fingerprint = fingerprint
 
-    @staticmethod
-    def _load(path: Path) -> dict[str, Any] | None:
-        if not path.exists():
+    def _load(self) -> dict[str, Any] | None:
+        value = _read_payload(self.path)
+        if value is None:
             return None
-        try:
-            with path.open("rb") as handle:
-                value = pickle.load(handle)
-        except (OSError, EOFError, pickle.UnpicklingError):
-            path.unlink(missing_ok=True)
+        if value.get("schema") != CACHE_SCHEMA or value.get("fingerprint") != self.fingerprint:
+            self.path.unlink(missing_ok=True)
             return None
-        if not isinstance(value, dict) or "rng_state" not in value:
-            path.unlink(missing_ok=True)
+        if "rng_state" not in value:
+            self.path.unlink(missing_ok=True)
             return None
         return value
 
     def load_progress(self) -> dict[str, Any] | None:
-        value = self._load(self.progress_path)
-        if value is not None and "state" not in value:
-            self.progress_path.unlink(missing_ok=True)
+        value = self._load()
+        if value is None or value.get("status") != "progress" or "state" not in value:
             return None
-        return value
+        return {"state": value["state"], "rng_state": value["rng_state"]}
 
     def save_progress(self, state: dict[str, Any], rng_state: tuple) -> None:
-        CacheManager._atomic_pickle(self.progress_path, {"state": state, "rng_state": rng_state})
+        _write_payload(
+            self.path,
+            {
+                "schema": CACHE_SCHEMA,
+                "fingerprint": self.fingerprint,
+                "status": "progress",
+                "sample_count": int(state["sample_count"]),
+                "iteration": int(state["iteration"]),
+                "state": state,
+                "rng_state": rng_state,
+            },
+        )
 
     def load_final(self) -> dict[str, Any] | None:
-        value = self._load(self.final_path)
-        if value is not None and "trace" not in value:
-            self.final_path.unlink(missing_ok=True)
+        value = self._load()
+        if value is None or value.get("status") != "final" or "trace" not in value:
             return None
-        return value
+        trace_data = value["trace"]
+        trace = Trace(
+            samples=[int(item) for item in trace_data["samples"]],
+            objectives=[float(item) for item in trace_data["objectives"]],
+            final_x=np.asarray(trace_data["final_x"], dtype=float),
+        )
+        return {"trace": trace, "rng_state": value["rng_state"]}
 
-    def save_final(self, trace: Any, rng_state: tuple) -> None:
-        CacheManager._atomic_pickle(self.final_path, {"trace": trace, "rng_state": rng_state})
-        self.progress_path.unlink(missing_ok=True)
+    def save_final(self, trace: Trace, rng_state: tuple) -> None:
+        _write_payload(
+            self.path,
+            {
+                "schema": CACHE_SCHEMA,
+                "fingerprint": self.fingerprint,
+                "status": "final",
+                "sample_count": int(trace.samples[-1]),
+                "trace": {
+                    "samples": trace.samples,
+                    "objectives": trace.objectives,
+                    "final_x": trace.final_x,
+                },
+                "rng_state": rng_state,
+            },
+        )
