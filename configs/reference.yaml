@@ -4,8 +4,13 @@ experiment:
   max_samples: 5000
   metric_samples: 1000
   figure_run: 0
-  weeks: ["08", "12", "21", "25", "29", "32"]
-
+  weeks:
+  - 08
+  - '12'
+  - '21'
+  - '25'
+  - '29'
+  - '32'
 problem:
   products: 10
   buyers: 40
@@ -18,7 +23,6 @@ problem:
   cost_ratio_high: 3.0
   rho_low: 0.25
   rho_high: 0.5
-
 methods:
   GZO_NS:
     mu0: 0.19
@@ -51,7 +55,7 @@ methods:
     batch_increment: 2
   ZO_OG:
     mu: 0.001
-    beta0: 0.00001
+    beta0: 1.0e-05
     beta_decay: 0.95
     batch_initial: 30
     batch_increment: 2
@@ -66,3 +70,21 @@ methods:
     initial_samples: 20
     s_max: 10
     M: 0.1
+  PISO:
+    mu0: 0.19
+    mu_min: 0.0001
+    beta0: 0.01
+    beta_decay: 0.95
+    mu_decay: 0.95
+    batch_initial: 30
+    batch_increment: 2
+  PISO_M:
+    mu0: 0.19
+    mu_min: 0.0001
+    beta0: 0.01
+    beta_decay: 0.95
+    mu_decay: 0.95
+    batch_initial: 30
+    batch_increment: 2
+    alpha: 0.5
+    tau: 0.9

@@ -12,6 +12,8 @@ STYLES = {
     "ZO_TG": {"color": "green", "marker": "^"},
     "ZO_OG": {"color": "red", "marker": "D"},
     "ZO_OGVR": {"color": "black", "marker": "*"},
+    "PISO": {"color": "purple", "marker": "X"},
+    "PISO_M": {"color": "orange", "marker": "P"},
 }
 
 

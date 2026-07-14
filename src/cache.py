@@ -71,6 +71,8 @@ def _method_tag(method: str, params: dict[str, Any]) -> str:
         "beta_decay": "bdecay",
         "mu_decay": "mdecay",
         "alpha0": "alpha0",
+        "alpha": "alpha",
+        "tau": "tau",
         "alpha_damping": "adamp",
         "batch_initial": "batch0",
         "batch_increment": "batchinc",

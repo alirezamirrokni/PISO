@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,11 @@ from src.methods import METHODS
 from src.problem import PricingProblem, ProblemSpec
 from src.progress import ExperimentProgress
 from src.report import write_outputs
+
+
+def _private_method_seed(base_seed: int, week_id: str, run_index: int, method: str) -> int:
+    payload = f"{base_seed}:{week_id}:{run_index}:{method}".encode("utf-8")
+    return int.from_bytes(hashlib.sha256(payload).digest()[:4], "little")
 
 
 @dataclass(frozen=True)
@@ -52,7 +58,8 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
         metric_samples=int(experiment["metric_samples"]),
         max_samples=int(experiment["max_samples"]),
     )
-    rng = np.random.RandomState(int(experiment["seed"]))
+    base_seed = int(experiment["seed"])
+    rng = np.random.RandomState(base_seed)
     simulations = int(experiment["simulations"])
     total_jobs = len(experiment["weeks"]) * simulations * len(method_names)
     cache_files = len(experiment["weeks"]) * len(method_names)
@@ -71,6 +78,13 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
                 problem = PricingProblem.from_week(project_root / "data", week_id, rng, spec)
                 for method_name in method_names:
                     job_number += 1
+                    method_class = METHODS[method_name]
+                    if getattr(method_class, "private_rng", False):
+                        job_rng = np.random.RandomState(
+                            _private_method_seed(base_seed, week_id, run_index, method_name)
+                        )
+                    else:
+                        job_rng = rng
                     label = (
                         f"{weeks[week_id]} | run {run_index + 1}/{simulations} | {method_name}"
                     )
@@ -78,7 +92,7 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
                     saved = job_cache.load_final()
                     if saved is not None:
                         trace = saved["trace"]
-                        rng.set_state(saved["rng_state"])
+                        job_rng.set_state(saved["rng_state"])
                         iteration = len(trace.samples) - 1
                         progress.start_job(
                             job_number,
@@ -105,12 +119,12 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
                         )
                         trace = METHODS[method_name](config["methods"][method_name]).run(
                             problem,
-                            rng,
+                            job_rng,
                             context,
                             job_cache,
                             handle,
                         )
-                        job_cache.save_final(trace, rng.get_state())
+                        job_cache.save_final(trace, job_rng.get_state())
                         status = "resumed" if partial is not None else "computed"
 
                     results.append(

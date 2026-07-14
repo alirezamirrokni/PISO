@@ -1,12 +1,16 @@
 experiment:
   seed: 2024
-  simulations: 2
-  max_samples: 300
-  metric_samples: 100
+  simulations: 20
+  max_samples: 5000
+  metric_samples: 1000
   figure_run: 0
   weeks:
   - 08
   - '12'
+  - '21'
+  - '25'
+  - '29'
+  - '32'
 problem:
   products: 10
   buyers: 40
@@ -66,21 +70,3 @@ methods:
     initial_samples: 20
     s_max: 10
     M: 0.1
-  PISO:
-    mu0: 0.19
-    mu_min: 0.0001
-    beta0: 0.01
-    beta_decay: 0.95
-    mu_decay: 0.95
-    batch_initial: 30
-    batch_increment: 2
-  PISO_M:
-    mu0: 0.19
-    mu_min: 0.0001
-    beta0: 0.01
-    beta_decay: 0.95
-    mu_decay: 0.95
-    batch_initial: 30
-    batch_increment: 2
-    alpha: 0.5
-    tau: 0.9
