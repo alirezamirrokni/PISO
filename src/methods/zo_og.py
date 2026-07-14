@@ -24,8 +24,6 @@ class ZOOG:
                 beta=float(p["beta0"]),
             ),
         )
-        if progress is not None:
-            progress.update(min(state["sample_count"], context.max_samples) - progress.n)
 
         while state["sample_count"] <= context.max_samples:
             mk = batch_size(p, state["iteration"])

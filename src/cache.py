@@ -15,7 +15,18 @@ import numpy as np
 from src.methods.common import Trace
 
 
-CACHE_SCHEMA = 3
+CACHE_SCHEMA = 4
+_CACHE_COLUMNS = [
+    "run",
+    "schema",
+    "fingerprint",
+    "status",
+    "sample_count",
+    "iteration",
+    "state",
+    "trace",
+    "rng_state",
+]
 
 
 def build_fingerprint(project_root: Path, config: dict[str, Any]) -> str:
@@ -31,27 +42,23 @@ def build_fingerprint(project_root: Path, config: dict[str, Any]) -> str:
         tracked.append(project_root / "data" / "prices" / f"2022_{str(week).zfill(2)}.csv")
 
     for path in tracked:
-        relative = path.relative_to(project_root).as_posix()
-        digest.update(relative.encode("utf-8"))
+        digest.update(path.relative_to(project_root).as_posix().encode("utf-8"))
         digest.update(path.read_bytes())
     return digest.hexdigest()
 
 
 def _safe(value: Any) -> str:
-    text = str(value)
-    text = text.replace("-", "m").replace(".", "p").replace("+", "plus")
+    text = str(value).replace("-", "m").replace(".", "p").replace("+", "plus")
     return re.sub(r"[^A-Za-z0-9_]+", "-", text).strip("-")
 
 
 def _run_tag(config: dict[str, Any]) -> str:
     exp = config["experiment"]
-    weeks = "-".join(str(value).zfill(2) for value in exp["weeks"])
     return (
         f"seed{_safe(exp['seed'])}"
         f"_budget{_safe(exp['max_samples'])}"
         f"_metric{_safe(exp['metric_samples'])}"
         f"_sims{_safe(exp['simulations'])}"
-        f"_weeks{weeks}"
     )
 
 
@@ -116,6 +123,18 @@ def _decode(value: Any) -> Any:
     return value
 
 
+def _dumps(value: Any) -> str:
+    if value is None:
+        return ""
+    return json.dumps(_encode(value), separators=(",", ":"), ensure_ascii=False)
+
+
+def _loads(value: str) -> Any:
+    if not value:
+        return None
+    return _decode(json.loads(value))
+
+
 def _set_csv_field_limit() -> None:
     limit = sys.maxsize
     while True:
@@ -126,17 +145,25 @@ def _set_csv_field_limit() -> None:
             limit //= 10
 
 
-def _write_payload(path: Path, payload: dict[str, Any]) -> None:
+def _atomic_write_rows(path: Path, rows: dict[int, dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.stem + ".tmp.csv")
     with temp.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["key", "value"])
+        writer = csv.DictWriter(handle, fieldnames=_CACHE_COLUMNS)
         writer.writeheader()
-        for key, value in payload.items():
+        for run_index in sorted(rows):
+            row = rows[run_index]
             writer.writerow(
                 {
-                    "key": key,
-                    "value": json.dumps(_encode(value), separators=(",", ":"), ensure_ascii=False),
+                    "run": run_index + 1,
+                    "schema": row["schema"],
+                    "fingerprint": row["fingerprint"],
+                    "status": row["status"],
+                    "sample_count": row["sample_count"],
+                    "iteration": row["iteration"],
+                    "state": _dumps(row.get("state")),
+                    "trace": _dumps(row.get("trace")),
+                    "rng_state": _dumps(row["rng_state"]),
                 }
             )
         handle.flush()
@@ -144,27 +171,83 @@ def _write_payload(path: Path, payload: dict[str, Any]) -> None:
     os.replace(temp, path)
 
 
-def _read_payload(path: Path) -> dict[str, Any] | None:
+def _read_rows(path: Path, fingerprint: str) -> dict[int, dict[str, Any]]:
     if not path.exists():
-        return None
+        return {}
     _set_csv_field_limit()
+    rows: dict[int, dict[str, Any]] = {}
     try:
         with path.open("r", encoding="utf-8", newline="") as handle:
             reader = csv.DictReader(handle)
-            if reader.fieldnames != ["key", "value"]:
-                raise ValueError("unexpected columns")
-            payload = {
-                row["key"]: _decode(json.loads(row["value"]))
-                for row in reader
-                if row.get("key") and row.get("value") is not None
-            }
+            if reader.fieldnames != _CACHE_COLUMNS:
+                raise ValueError("unexpected cache columns")
+            for raw in reader:
+                run_index = int(raw["run"]) - 1
+                row = {
+                    "schema": int(raw["schema"]),
+                    "fingerprint": raw["fingerprint"],
+                    "status": raw["status"],
+                    "sample_count": int(raw["sample_count"]),
+                    "iteration": int(raw["iteration"]),
+                    "state": _loads(raw["state"]),
+                    "trace": _loads(raw["trace"]),
+                    "rng_state": _loads(raw["rng_state"]),
+                }
+                if row["schema"] != CACHE_SCHEMA or row["fingerprint"] != fingerprint:
+                    raise ValueError("incompatible cache row")
+                if row["status"] not in {"progress", "final"} or row["rng_state"] is None:
+                    raise ValueError("incomplete cache row")
+                rows[run_index] = row
     except (OSError, csv.Error, json.JSONDecodeError, KeyError, TypeError, ValueError):
         path.unlink(missing_ok=True)
+        return {}
+    return rows
+
+
+def _write_manifest(path: Path, fingerprint: str, run_tag: str, complete: bool) -> None:
+    temp = path.with_name(path.stem + ".tmp.csv")
+    with temp.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["schema", "fingerprint", "run_tag", "complete"],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "schema": CACHE_SCHEMA,
+                "fingerprint": fingerprint,
+                "run_tag": run_tag,
+                "complete": int(complete),
+            }
+        )
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp, path)
+
+
+def _read_manifest(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
         return None
-    return payload
+    try:
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+        if len(rows) != 1:
+            raise ValueError("invalid manifest")
+        row = rows[0]
+        return {
+            "schema": int(row["schema"]),
+            "fingerprint": row["fingerprint"],
+            "run_tag": row["run_tag"],
+            "complete": bool(int(row["complete"])),
+        }
+    except (OSError, csv.Error, KeyError, TypeError, ValueError):
+        path.unlink(missing_ok=True)
+        return None
 
 
 class CacheManager:
+    """Manage one checkpoint CSV for each dataset-method pair."""
+
     def __init__(
         self,
         output_dir: Path,
@@ -177,101 +260,104 @@ class CacheManager:
         self.fingerprint = fingerprint
         self.config = config
         self.run_tag = _run_tag(config)
-        self.manifest_path = self.root / f"manifest_{self.run_tag}.csv"
+        self.manifest_path = self.root / "cache_manifest.csv"
+        self._groups: dict[tuple[str, str], DatasetMethodCache] = {}
 
         if reset and self.root.exists():
             shutil.rmtree(self.root)
         self.root.mkdir(parents=True, exist_ok=True)
-        for temp in self.root.glob("*.tmp.csv"):
+        for temp in self.root.rglob("*.tmp.csv"):
             temp.unlink(missing_ok=True)
         self._check_manifest()
 
     def _check_manifest(self) -> None:
-        manifest = _read_payload(self.manifest_path)
-        if manifest is not None and manifest.get("fingerprint") == self.fingerprint:
+        manifest = _read_manifest(self.manifest_path)
+        valid = bool(
+            manifest
+            and manifest["schema"] == CACHE_SCHEMA
+            and manifest["fingerprint"] == self.fingerprint
+            and manifest["run_tag"] == self.run_tag
+        )
+        if valid:
             return
 
-        for path in self.root.glob(f"{self.run_tag}__*.csv"):
+        for path in self.root.rglob("*.csv"):
             path.unlink(missing_ok=True)
-        self.manifest_path.unlink(missing_ok=True)
-        _write_payload(
-            self.manifest_path,
-            {
-                "schema": CACHE_SCHEMA,
-                "fingerprint": self.fingerprint,
-                "complete": False,
-                "run_tag": self.run_tag,
-            },
-        )
+        for folder in self.root.iterdir():
+            if folder.is_dir():
+                shutil.rmtree(folder, ignore_errors=True)
+        _write_manifest(self.manifest_path, self.fingerprint, self.run_tag, complete=False)
+
+    def _group(self, week_id: str, method: str) -> "DatasetMethodCache":
+        key = (week_id, method)
+        if key not in self._groups:
+            method_params = self.config["methods"][method]
+            folder = self.root / f"week{week_id}"
+            filename = (
+                f"{_method_tag(method, method_params)}_{self.run_tag}.csv"
+            )
+            self._groups[key] = DatasetMethodCache(
+                folder / filename,
+                self.fingerprint,
+            )
+        return self._groups[key]
 
     def job(self, week_id: str, run_index: int, method: str) -> "JobCache":
-        method_params = self.config["methods"][method]
-        filename = (
-            f"{self.run_tag}"
-            f"__week{week_id}"
-            f"_run{run_index + 1:03d}"
-            f"_{_method_tag(method, method_params)}.csv"
-        )
-        return JobCache(self.root / filename, self.fingerprint)
+        return JobCache(self._group(week_id, method), run_index)
 
     def is_complete(self, required_outputs: list[Path]) -> bool:
-        manifest = _read_payload(self.manifest_path)
-        return bool(manifest and manifest.get("complete")) and all(
+        manifest = _read_manifest(self.manifest_path)
+        return bool(manifest and manifest["complete"]) and all(
             path.is_file() and path.stat().st_size > 0 for path in required_outputs
         )
 
     def mark_complete(self) -> None:
-        _write_payload(
-            self.manifest_path,
-            {
-                "schema": CACHE_SCHEMA,
-                "fingerprint": self.fingerprint,
-                "complete": True,
-                "run_tag": self.run_tag,
-            },
-        )
+        _write_manifest(self.manifest_path, self.fingerprint, self.run_tag, complete=True)
 
 
-class JobCache:
+class DatasetMethodCache:
     def __init__(self, path: Path, fingerprint: str) -> None:
         self.path = path
         self.fingerprint = fingerprint
+        self.rows = _read_rows(path, fingerprint)
 
-    def _load(self) -> dict[str, Any] | None:
-        value = _read_payload(self.path)
-        if value is None:
-            return None
-        if value.get("schema") != CACHE_SCHEMA or value.get("fingerprint") != self.fingerprint:
-            self.path.unlink(missing_ok=True)
-            return None
-        if "rng_state" not in value:
-            self.path.unlink(missing_ok=True)
-            return None
-        return value
+    def get(self, run_index: int) -> dict[str, Any] | None:
+        return self.rows.get(run_index)
+
+    def put(self, run_index: int, row: dict[str, Any]) -> None:
+        self.rows[run_index] = row
+        _atomic_write_rows(self.path, self.rows)
+
+
+class JobCache:
+    def __init__(self, group: DatasetMethodCache, run_index: int) -> None:
+        self.group = group
+        self.run_index = run_index
 
     def load_progress(self) -> dict[str, Any] | None:
-        value = self._load()
-        if value is None or value.get("status") != "progress" or "state" not in value:
+        value = self.group.get(self.run_index)
+        if value is None or value["status"] != "progress" or value["state"] is None:
             return None
         return {"state": value["state"], "rng_state": value["rng_state"]}
 
     def save_progress(self, state: dict[str, Any], rng_state: tuple) -> None:
-        _write_payload(
-            self.path,
+        self.group.put(
+            self.run_index,
             {
                 "schema": CACHE_SCHEMA,
-                "fingerprint": self.fingerprint,
+                "fingerprint": self.group.fingerprint,
                 "status": "progress",
                 "sample_count": int(state["sample_count"]),
                 "iteration": int(state["iteration"]),
                 "state": state,
+                "trace": None,
                 "rng_state": rng_state,
             },
         )
 
     def load_final(self) -> dict[str, Any] | None:
-        value = self._load()
-        if value is None or value.get("status") != "final" or "trace" not in value:
+        value = self.group.get(self.run_index)
+        if value is None or value["status"] != "final" or value["trace"] is None:
             return None
         trace_data = value["trace"]
         trace = Trace(
@@ -282,13 +368,15 @@ class JobCache:
         return {"trace": trace, "rng_state": value["rng_state"]}
 
     def save_final(self, trace: Trace, rng_state: tuple) -> None:
-        _write_payload(
-            self.path,
+        self.group.put(
+            self.run_index,
             {
                 "schema": CACHE_SCHEMA,
-                "fingerprint": self.fingerprint,
+                "fingerprint": self.group.fingerprint,
                 "status": "final",
                 "sample_count": int(trace.samples[-1]),
+                "iteration": len(trace.samples) - 1,
+                "state": None,
                 "trace": {
                     "samples": trace.samples,
                     "objectives": trace.objectives,

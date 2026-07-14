@@ -9,7 +9,7 @@ from src.cache import CacheManager, build_fingerprint
 from src.config import load_config, save_config
 from src.methods import METHODS
 from src.problem import PricingProblem, ProblemSpec
-from src.progress import progress_bar, reset_bar
+from src.progress import ExperimentProgress
 from src.report import write_outputs
 
 
@@ -55,41 +55,63 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
     rng = np.random.RandomState(int(experiment["seed"]))
     simulations = int(experiment["simulations"])
     total_jobs = len(experiment["weeks"]) * simulations * len(method_names)
+    cache_files = len(experiment["weeks"]) * len(method_names)
     results: list[dict] = []
 
-    overall = progress_bar(total=total_jobs, desc="Experiments", unit="job", leave=True)
-    samples = progress_bar(
-        total=context.max_samples,
-        desc="Current method",
-        unit="sample",
-        leave=False,
+    print(
+        f"Running {total_jobs} jobs. Checkpoints use {cache_files} CSV files "
+        f"(one per dataset-method pair) in {cache.root}."
     )
+    progress = ExperimentProgress(total_jobs, context.max_samples)
+    job_number = 0
     try:
         for week_value in experiment["weeks"]:
             week_id = str(week_value).zfill(2)
             for run_index in range(simulations):
                 problem = PricingProblem.from_week(project_root / "data", week_id, rng, spec)
                 for method_name in method_names:
-                    job_label = f"{weeks[week_id]} | run {run_index + 1}/{simulations} | {method_name}"
-                    overall.set_description(job_label, refresh=False)
+                    job_number += 1
+                    label = (
+                        f"{weeks[week_id]} | run {run_index + 1}/{simulations} | {method_name}"
+                    )
                     job_cache = cache.job(week_id, run_index, method_name)
                     saved = job_cache.load_final()
                     if saved is not None:
                         trace = saved["trace"]
                         rng.set_state(saved["rng_state"])
-                        reset_bar(samples, context.max_samples, context.max_samples, "Current method")
+                        iteration = len(trace.samples) - 1
+                        progress.start_job(
+                            job_number,
+                            label,
+                            context.max_samples,
+                            iteration,
+                            "loading cache",
+                        )
                         status = "cached"
                     else:
-                        progress_saved = job_cache.load_progress()
-                        initial = 0 if progress_saved is None else min(
-                            int(progress_saved["state"]["sample_count"]), context.max_samples
+                        partial = job_cache.load_progress()
+                        initial_samples = 0 if partial is None else int(
+                            partial["state"]["sample_count"]
                         )
-                        reset_bar(samples, context.max_samples, initial, "Current method")
+                        initial_iteration = 0 if partial is None else int(
+                            partial["state"]["iteration"]
+                        )
+                        handle = progress.start_job(
+                            job_number,
+                            label,
+                            initial_samples,
+                            initial_iteration,
+                            "resuming" if partial is not None else "starting",
+                        )
                         trace = METHODS[method_name](config["methods"][method_name]).run(
-                            problem, rng, context, job_cache, samples
+                            problem,
+                            rng,
+                            context,
+                            job_cache,
+                            handle,
                         )
                         job_cache.save_final(trace, rng.get_state())
-                        status = "resumed" if progress_saved else "computed"
+                        status = "resumed" if partial is not None else "computed"
 
                     results.append(
                         {
@@ -100,13 +122,18 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
                             "trace": trace,
                         }
                     )
-                    overall.set_postfix(status=status, refresh=False)
-                    overall.update(1)
+                    progress.finish_job(
+                        status,
+                        int(trace.samples[-1]),
+                        len(trace.samples) - 1,
+                    )
     finally:
-        samples.close()
-        overall.close()
+        summary = progress.close()
 
     write_outputs(results, method_names, int(experiment["figure_run"]), output_dir)
     save_config(config, output_dir / "config.yaml")
     cache.mark_complete()
-    print(f"Finished. Results are in {output_dir}")
+    print(
+        f"Finished: {summary.computed} computed, {summary.resumed} resumed, "
+        f"{summary.cached} loaded from cache. Results are in {output_dir}"
+    )

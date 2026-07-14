@@ -25,8 +25,6 @@ class GZONS:
                 alpha=float(p["alpha0"]),
             ),
         )
-        if progress is not None:
-            progress.update(min(state["sample_count"], context.max_samples) - progress.n)
 
         while state["sample_count"] <= context.max_samples:
             k = state["iteration"]

@@ -47,9 +47,7 @@ def record(state: dict[str, Any], problem, metric_samples: int, rng: np.random.R
 def save_step(cache, state: dict[str, Any], rng: np.random.RandomState, progress) -> None:
     cache.save_progress(state, rng.get_state())
     if progress is not None:
-        target = min(int(state["sample_count"]), int(progress.total))
-        progress.set_postfix(iteration=int(state["iteration"]), refresh=False)
-        progress.update(max(0, target - int(progress.n)))
+        progress.update(int(state["sample_count"]), int(state["iteration"]))
 
 
 def finish(state: dict[str, Any]) -> Trace:
