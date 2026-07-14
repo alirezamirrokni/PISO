@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 from tqdm.auto import tqdm
 
-from src.cache import CacheManager
+from src.cache import CacheManager, build_fingerprint
 from src.config import load_config, save_config
 from src.methods import METHODS
 from src.problem import PricingProblem, ProblemSpec
@@ -40,7 +40,8 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
         output_dir / "figure.pdf",
         output_dir / "config.yaml",
     ]
-    cache = CacheManager(output_dir, config, reset=reset_cache)
+    fingerprint = build_fingerprint(project_root, config)
+    cache = CacheManager(output_dir, fingerprint, reset=reset_cache)
     if cache.is_complete(required_outputs):
         print(f"Complete cache found in {output_dir}. No experiment was rerun.")
         return
