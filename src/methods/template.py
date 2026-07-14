@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from piso.methods.common import finish, initial_state, record, restore_or_initialize, save_step
+from src.methods.common import finish, initial_state, record, restore_or_initialize, save_step
 
 
 class MyMethod:

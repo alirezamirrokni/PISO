@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from piso.runner import run_experiment
+from src.runner import run_experiment
 
 
 def main() -> None:

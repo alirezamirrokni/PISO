@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from piso.methods.common import batch_size, finish, initial_state, record, restore_or_initialize, save_step
+from src.methods.common import batch_size, finish, initial_state, record, restore_or_initialize, save_step
 
 
 class ZOOGVR:

@@ -6,11 +6,11 @@ from pathlib import Path
 import numpy as np
 from tqdm.auto import tqdm
 
-from piso.cache import CacheManager
-from piso.config import load_config, save_config
-from piso.methods import METHODS
-from piso.problem import PricingProblem, ProblemSpec
-from piso.report import write_outputs
+from src.cache import CacheManager
+from src.config import load_config, save_config
+from src.methods import METHODS
+from src.problem import PricingProblem, ProblemSpec
+from src.report import write_outputs
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
     method_names = list(config["methods"])
     unknown = [name for name in method_names if name not in METHODS]
     if unknown:
-        raise KeyError(f"Methods not registered in piso/methods/__init__.py: {unknown}")
+        raise KeyError(f"Methods not registered in src/methods/__init__.py: {unknown}")
 
     required_outputs = [
         output_dir / "summary.csv",
