@@ -74,6 +74,11 @@ methods:
     mu_decay: 0.95
     batch_initial: 30
     batch_increment: 2
+    residual_alphas:
+    - 0.25
+    - 0.5
+    - 0.75
+    - 1.0
   PISO_M:
     mu0: 0.19
     mu_min: 0.0001
@@ -82,5 +87,11 @@ methods:
     mu_decay: 0.95
     batch_initial: 30
     batch_increment: 2
-    alpha: 0.5
     tau: 0.9
+    residual_alphas:
+    - 0.25
+    - 0.5
+    - 0.75
+    - 1.0
+    shape_alpha: 0.5
+    step_normalization: spectral

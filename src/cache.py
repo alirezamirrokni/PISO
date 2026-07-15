@@ -15,9 +15,10 @@ import numpy as np
 from src.methods.common import Trace
 
 
-CACHE_SCHEMA = 4
+CACHE_SCHEMA = 5
 _CACHE_COLUMNS = [
     "run",
+    "variant",
     "schema",
     "fingerprint",
     "status",
@@ -30,7 +31,6 @@ _CACHE_COLUMNS = [
 
 
 def build_fingerprint(project_root: Path, config: dict[str, Any]) -> str:
-    """Fingerprint the configuration, implementation, and selected input data."""
     digest = hashlib.sha256()
     digest.update(json.dumps(config, sort_keys=True, separators=(",", ":")).encode("utf-8"))
     digest.update(f"cache-schema:{CACHE_SCHEMA}".encode("utf-8"))
@@ -48,6 +48,8 @@ def build_fingerprint(project_root: Path, config: dict[str, Any]) -> str:
 
 
 def _safe(value: Any) -> str:
+    if isinstance(value, list):
+        value = "-".join(str(item) for item in value)
     text = str(value).replace("-", "m").replace(".", "p").replace("+", "plus")
     return re.sub(r"[^A-Za-z0-9_]+", "-", text).strip("-")
 
@@ -71,9 +73,11 @@ def _method_tag(method: str, params: dict[str, Any]) -> str:
         "beta_decay": "bdecay",
         "mu_decay": "mdecay",
         "alpha0": "alpha0",
-        "alpha": "alpha",
-        "tau": "tau",
         "alpha_damping": "adamp",
+        "residual_alphas": "ralphas",
+        "shape_alpha": "shape",
+        "step_normalization": "stepnorm",
+        "tau": "tau",
         "batch_initial": "batch0",
         "batch_increment": "batchinc",
         "window": "window",
@@ -147,17 +151,25 @@ def _set_csv_field_limit() -> None:
             limit //= 10
 
 
-def _atomic_write_rows(path: Path, rows: dict[int, dict[str, Any]]) -> None:
+def _row_key(run_index: int, variant: str) -> tuple[int, str]:
+    return int(run_index), str(variant)
+
+
+def _atomic_write_rows(
+    path: Path,
+    rows: dict[tuple[int, str], dict[str, Any]],
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.stem + ".tmp.csv")
     with temp.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=_CACHE_COLUMNS)
         writer.writeheader()
-        for run_index in sorted(rows):
-            row = rows[run_index]
+        for run_index, variant in sorted(rows):
+            row = rows[(run_index, variant)]
             writer.writerow(
                 {
                     "run": run_index + 1,
+                    "variant": variant,
                     "schema": row["schema"],
                     "fingerprint": row["fingerprint"],
                     "status": row["status"],
@@ -173,11 +185,14 @@ def _atomic_write_rows(path: Path, rows: dict[int, dict[str, Any]]) -> None:
     os.replace(temp, path)
 
 
-def _read_rows(path: Path, fingerprint: str) -> dict[int, dict[str, Any]]:
+def _read_rows(
+    path: Path,
+    fingerprint: str,
+) -> dict[tuple[int, str], dict[str, Any]]:
     if not path.exists():
         return {}
     _set_csv_field_limit()
-    rows: dict[int, dict[str, Any]] = {}
+    rows: dict[tuple[int, str], dict[str, Any]] = {}
     try:
         with path.open("r", encoding="utf-8", newline="") as handle:
             reader = csv.DictReader(handle)
@@ -185,6 +200,7 @@ def _read_rows(path: Path, fingerprint: str) -> dict[int, dict[str, Any]]:
                 raise ValueError("unexpected cache columns")
             for raw in reader:
                 run_index = int(raw["run"]) - 1
+                variant = raw["variant"]
                 row = {
                     "schema": int(raw["schema"]),
                     "fingerprint": raw["fingerprint"],
@@ -199,7 +215,7 @@ def _read_rows(path: Path, fingerprint: str) -> dict[int, dict[str, Any]]:
                     raise ValueError("incompatible cache row")
                 if row["status"] not in {"progress", "final"} or row["rng_state"] is None:
                     raise ValueError("incomplete cache row")
-                rows[run_index] = row
+                rows[_row_key(run_index, variant)] = row
     except (OSError, csv.Error, json.JSONDecodeError, KeyError, TypeError, ValueError):
         path.unlink(missing_ok=True)
         return {}
@@ -248,7 +264,7 @@ def _read_manifest(path: Path) -> dict[str, Any] | None:
 
 
 class CacheManager:
-    """Manage one checkpoint CSV for each dataset-method pair."""
+    """Manage one checkpoint CSV for every dataset-method combination."""
 
     def __init__(
         self,
@@ -295,17 +311,18 @@ class CacheManager:
         if key not in self._groups:
             method_params = self.config["methods"][method]
             folder = self.root / f"week{week_id}"
-            filename = (
-                f"{_method_tag(method, method_params)}_{self.run_tag}.csv"
-            )
-            self._groups[key] = DatasetMethodCache(
-                folder / filename,
-                self.fingerprint,
-            )
+            filename = f"{_method_tag(method, method_params)}_{self.run_tag}.csv"
+            self._groups[key] = DatasetMethodCache(folder / filename, self.fingerprint)
         return self._groups[key]
 
-    def job(self, week_id: str, run_index: int, method: str) -> "JobCache":
-        return JobCache(self._group(week_id, method), run_index)
+    def job(
+        self,
+        week_id: str,
+        run_index: int,
+        method: str,
+        variant: str = "",
+    ) -> "JobCache":
+        return JobCache(self._group(week_id, method), run_index, variant)
 
     def is_complete(self, required_outputs: list[Path]) -> bool:
         manifest = _read_manifest(self.manifest_path)
@@ -323,21 +340,27 @@ class DatasetMethodCache:
         self.fingerprint = fingerprint
         self.rows = _read_rows(path, fingerprint)
 
-    def get(self, run_index: int) -> dict[str, Any] | None:
-        return self.rows.get(run_index)
+    def get(self, run_index: int, variant: str) -> dict[str, Any] | None:
+        return self.rows.get(_row_key(run_index, variant))
 
-    def put(self, run_index: int, row: dict[str, Any]) -> None:
-        self.rows[run_index] = row
+    def put(self, run_index: int, variant: str, row: dict[str, Any]) -> None:
+        self.rows[_row_key(run_index, variant)] = row
         _atomic_write_rows(self.path, self.rows)
 
 
 class JobCache:
-    def __init__(self, group: DatasetMethodCache, run_index: int) -> None:
+    def __init__(
+        self,
+        group: DatasetMethodCache,
+        run_index: int,
+        variant: str,
+    ) -> None:
         self.group = group
         self.run_index = run_index
+        self.variant = variant
 
     def load_progress(self) -> dict[str, Any] | None:
-        value = self.group.get(self.run_index)
+        value = self.group.get(self.run_index, self.variant)
         if value is None or value["status"] != "progress" or value["state"] is None:
             return None
         return {"state": value["state"], "rng_state": value["rng_state"]}
@@ -345,6 +368,7 @@ class JobCache:
     def save_progress(self, state: dict[str, Any], rng_state: tuple) -> None:
         self.group.put(
             self.run_index,
+            self.variant,
             {
                 "schema": CACHE_SCHEMA,
                 "fingerprint": self.group.fingerprint,
@@ -358,7 +382,7 @@ class JobCache:
         )
 
     def load_final(self) -> dict[str, Any] | None:
-        value = self.group.get(self.run_index)
+        value = self.group.get(self.run_index, self.variant)
         if value is None or value["status"] != "final" or value["trace"] is None:
             return None
         trace_data = value["trace"]
@@ -372,6 +396,7 @@ class JobCache:
     def save_final(self, trace: Trace, rng_state: tuple) -> None:
         self.group.put(
             self.run_index,
+            self.variant,
             {
                 "schema": CACHE_SCHEMA,
                 "fingerprint": self.group.fingerprint,

@@ -13,7 +13,6 @@ from src.methods.common import (
 
 
 def _normalized_hint(momentum: np.ndarray) -> np.ndarray:
-    """Return h / ||h||, or the zero vector when h is zero."""
     norm = float(np.linalg.norm(momentum))
     if norm == 0.0:
         return np.zeros_like(momentum, dtype=float)
@@ -23,52 +22,70 @@ def _normalized_hint(momentum: np.ndarray) -> np.ndarray:
 def _sample_direction(
     rng: np.random.RandomState,
     dimension: int,
-    alpha: float,
+    shape_alpha: float,
     hint: np.ndarray,
 ) -> np.ndarray:
-    """Sample N(0, (alpha/d)I + (1-alpha) hint hint^T)."""
-    isotropic = np.sqrt(alpha / dimension) * rng.normal(size=dimension)
-    guided = np.sqrt(1.0 - alpha) * rng.normal() * hint
+    """Sample N(0, (shape_alpha/d)I + (1-shape_alpha)hh^T)."""
+    isotropic = np.sqrt(shape_alpha / dimension) * rng.normal(size=dimension)
+    guided = np.sqrt(1.0 - shape_alpha) * rng.normal() * hint
     return isotropic + guided
 
 
 def _covariance_product(
     vector: np.ndarray,
-    alpha: float,
+    shape_alpha: float,
     hint: np.ndarray,
 ) -> np.ndarray:
-    """Compute Sigma @ vector without materializing the covariance matrix."""
     dimension = vector.size
     return (
-        (alpha / dimension) * vector
-        + (1.0 - alpha) * hint * float(np.dot(hint, vector))
+        (shape_alpha / dimension) * vector
+        + (1.0 - shape_alpha) * hint * float(np.dot(hint, vector))
     )
 
 
-class PISOM:
-    """Momentum-shaped partially informed stochastic optimization.
+def _spectral_step_scale(
+    dimension: int,
+    shape_alpha: float,
+    hint: np.ndarray,
+) -> float:
+    """Normalize the largest eigenvalue of the effective preconditioner to one.
 
-    At each iteration the method uses an independent direct estimate of the
-    known gradient component and two independent function-estimation batches at
-    x +/- mu*u. The residual estimator updates the momentum buffer, which in
-    turn defines the covariance used by the next perturbation.
+    The raw estimator has expectation Sigma times the partially weighted
+    gradient. Using the same numerical learning-rate range as an identity-
+    covariance method therefore requires compensating for Sigma's scale.
+    Dividing by lambda_max(Sigma) is the conservative normalization: it becomes
+    a factor d when shape_alpha=1, while retaining the intended anisotropy for
+    shaped covariances.
     """
+    if float(np.linalg.norm(hint)) == 0.0:
+        lambda_max = shape_alpha / dimension
+    else:
+        lambda_max = shape_alpha / dimension + (1.0 - shape_alpha)
+    return 1.0 / lambda_max
 
+
+class PISOM:
     name = "PISO_M"
     private_rng = True
 
     def __init__(self, params: dict) -> None:
         self.p = params
-        alpha = float(params["alpha"])
+        residual_alpha = float(params["residual_alpha"])
+        shape_alpha = float(params["shape_alpha"])
         tau = float(params["tau"])
-        if not 0.0 < alpha <= 1.0:
-            raise ValueError("PISO_M alpha must satisfy 0 < alpha <= 1")
+        if params.get("step_normalization") != "spectral":
+            raise ValueError("PISO_M step_normalization must be 'spectral'")
+        if not 0.0 < residual_alpha <= 1.0:
+            raise ValueError("PISO_M residual_alpha must satisfy 0 < residual_alpha <= 1")
+        if not 0.0 < shape_alpha <= 1.0:
+            raise ValueError("PISO_M shape_alpha must satisfy 0 < shape_alpha <= 1")
         if not 0.0 <= tau < 1.0:
             raise ValueError("PISO_M tau must satisfy 0 <= tau < 1")
 
     def run(self, problem, rng, context, cache, progress=None):
         p = self.p
-        alpha = float(p["alpha"])
+        residual_alpha = float(p["residual_alpha"])
+        shape_alpha = float(p["shape_alpha"])
         tau = float(p["tau"])
 
         state, _ = restore_or_initialize(
@@ -89,7 +106,7 @@ class PISOM:
             state["beta"] *= float(p["beta_decay"])
 
             hint = _normalized_hint(state["momentum"])
-            direction = _sample_direction(rng, problem.n, alpha, hint)
+            direction = _sample_direction(rng, problem.n, shape_alpha, hint)
 
             plus, _ = problem.sample_losses(
                 state["x"] + state["mu"] * direction,
@@ -101,9 +118,6 @@ class PISOM:
                 mk,
                 rng,
             )
-
-            # This batch is sampled at x_k and independently of the direction
-            # and the two perturbed function-estimation batches.
             known_demands = problem.sample_demands(state["x"], mk, rng)
             known_gradient = problem.partial_gradients(known_demands).mean(axis=0)
 
@@ -114,10 +128,20 @@ class PISOM:
                 finite_difference
                 - float(np.dot(known_gradient, direction)) * direction
             )
-            gradient = residual + _covariance_product(known_gradient, alpha, hint)
+            gradient = (
+                residual_alpha * residual
+                + _covariance_product(known_gradient, shape_alpha, hint)
+            )
+
+            # E[gradient] is Sigma(g_K + residual_alpha*g_U), not the
+            # unpreconditioned gradient. Spectral normalization preserves the
+            # common learning-rate scale without destroying the momentum shape.
+            step_scale = _spectral_step_scale(problem.n, shape_alpha, hint)
 
             state["sample_count"] += 3 * mk
-            state["x"] = state["x"] - state["beta"] * gradient
+            state["x"] = state["x"] - state["beta"] * step_scale * gradient
+            # The raw residual, not its externally weighted version, is used to
+            # track the unknown component's direction.
             state["momentum"] = tau * state["momentum"] + (1.0 - tau) * residual
             state["mu"] = max(
                 state["mu"] * float(p["mu_decay"]),
