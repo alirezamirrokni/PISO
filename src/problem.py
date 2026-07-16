@@ -31,8 +31,9 @@ class PricingProblem:
         self.n = spec.products
         self.m = spec.buyers
         self.theta = np.asarray(theta, dtype=float).reshape(self.n)
+        self.rho = np.asarray(rho, dtype=float).reshape(self.n)
         self.gamma = 2.0 * np.pi / (np.sqrt(6.0) * self.theta)
-        self.w = np.asarray(rho, dtype=float).reshape(self.n) * self.theta
+        self.w = self.rho * self.theta
         self.slope_low = spec.cost_ratio_low * self.w
         self.slope_middle = spec.cost_ratio_middle * self.w
         self.slope_high = spec.cost_ratio_high * self.w
@@ -40,13 +41,37 @@ class PricingProblem:
         self.upper = spec.upper_inventory_factor * self.m / self.n
         self.outside_weight = spec.outside_weight_per_product * self.n
 
-    @classmethod
-    def from_week(cls, data_dir: Path, week_id: str, rng: np.random.RandomState, spec: ProblemSpec):
-        raw = np.loadtxt(data_dir / "prices" / f"2022_{week_id}.csv", encoding="utf-8-sig")
+    @staticmethod
+    def _week_theta(data_dir: Path, week_id: str, spec: ProblemSpec) -> np.ndarray:
+        raw = np.loadtxt(
+            data_dir / "prices" / f"2022_{week_id}.csv",
+            encoding="utf-8-sig",
+        )
         theta = raw[: spec.products].astype(float)
         theta /= theta.max()
+        return theta
+
+    @classmethod
+    def from_week(
+        cls,
+        data_dir: Path,
+        week_id: str,
+        rng: np.random.RandomState,
+        spec: ProblemSpec,
+    ):
+        theta = cls._week_theta(data_dir, week_id, spec)
         rho = spec.rho_low + (spec.rho_high - spec.rho_low) * rng.rand(spec.products)
         return cls(theta, rho, spec)
+
+    @classmethod
+    def from_week_with_rho(
+        cls,
+        data_dir: Path,
+        week_id: str,
+        rho: np.ndarray,
+        spec: ProblemSpec,
+    ):
+        return cls(cls._week_theta(data_dir, week_id, spec), rho, spec)
 
     @property
     def initial_x(self) -> np.ndarray:
