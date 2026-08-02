@@ -1,0 +1,156 @@
+experiment:
+  seed: 2024
+  simulations: 100
+  max_samples: 5000
+  metric_samples: 1000
+  figure_run: 0
+  weeks:
+  - 08
+  - '12'
+  - '21'
+  - '25'
+  - '29'
+  - '32'
+problem:
+  products: 10
+  buyers: 40
+  initial_price: 0.5
+  outside_weight_per_product: 0.1
+  lower_inventory_factor: 0.5
+  upper_inventory_factor: 1.5
+  cost_ratio_low: 2.0
+  cost_ratio_middle: 1.0
+  cost_ratio_high: 3.0
+  rho_low: 0.25
+  rho_high: 0.5
+methods:
+  GZO_NS:
+    mu0: 0.19
+    mu_min: 0.0001
+    beta0: 0.01
+    beta_decay: 0.95
+    mu_decay: 0.95
+    alpha0: 0.0
+    alpha_damping: 0.98
+    batch_initial: 30
+    batch_increment: 2
+  GZO_HS:
+    mu0: 0.19
+    mu_min: 0.0001
+    beta0: 0.01
+    beta_decay: 0.95
+    mu_decay: 0.95
+    alpha0: 0.0
+    alpha_damping: 0.98
+    batch_initial: 30
+    batch_increment: 2
+    window: 1
+  ZO_TG:
+    mu0: 0.19
+    mu_min: 0.0001
+    beta0: 0.0031622776601683794
+    beta_decay: 0.95
+    mu_decay: 0.95
+    batch_initial: 30
+    batch_increment: 2
+  ZO_OG:
+    mu: 0.001
+    beta0: 1.0e-05
+    beta_decay: 0.95
+    batch_initial: 30
+    batch_increment: 2
+  ZO_OGVR:
+    mu0: 0.19
+    mu_min: 0.0001
+    beta0: 0.001
+    beta_decay: 0.95
+    mu_decay: 0.95
+    batch_initial: 30
+    batch_increment: 2
+    initial_samples: 20
+    s_max: 10
+    M: 0.1
+  GaussianPISO:
+    radius: 0.4
+    radius_decay: 0.96
+    step_size: 0.005
+    step_decay: 0.98
+    gamma: 2.0
+    rho: 0.92
+    known_fraction: 0.5
+    batch_initial: 30
+    batch_increment: 2
+  GuidedPISO:
+    radius: 0.4
+    radius_decay: 0.96
+    step_size: 0.005
+    step_decay: 0.98
+    gamma: 2.0
+    rho: 0.92
+    known_fraction: 0.5
+    batch_initial: 30
+    batch_increment: 2
+    alpha: 0.98
+  CyclePISO:
+    radius: 0.4
+    radius_decay: 0.96
+    step_size: 0.005
+    step_decay: 0.98
+    gamma: 2.0
+    rho: 0.92
+    known_fraction: 0.5
+    batch_initial: 30
+    batch_increment: 2
+    cycle_length: 10
+  GaussianPISO2:
+    radius: 0.40
+    radius_decay: 0.96
+    step_size: 5.00e-3
+    step_decay: 1.00
+    gamma: 2.00
+    rho: 0.92
+    lambda: 0.25
+    known_fraction: 0.50
+    batch_initial: 30
+    batch_increment: 2
+  GuidedPISO2:
+    radius: 0.40
+    radius_decay: 0.96
+    step_size: 5.00e-3
+    step_decay: 1.00
+    gamma: 2.00
+    rho: 0.92
+    lambda: 0.25
+    known_fraction: 0.50
+    batch_initial: 30
+    batch_increment: 2
+    alpha: 0.98
+  CyclePISO2:
+    radius: 0.40
+    radius_decay: 0.96
+    step_size: 5.00e-3
+    step_decay: 1.00
+    gamma: 2.00
+    rho: 0.92
+    lambda: 0.25
+    known_fraction: 0.50
+    batch_initial: 30
+    batch_increment: 2
+    cycle_length: 10
+plotting:
+  methods:
+  - GZO_NS
+  - GZO_HS
+  - ZO_TG
+  - ZO_OGVR
+  - GaussianPISO
+  - GuidedPISO
+  - CyclePISO
+  - GaussianPISO2
+  - GuidedPISO2
+  - CyclePISO2
+  y_limit_mode: final_window
+  final_window_fraction: 0.3
+  y_margin_fraction: 0.1
+  post_drop_remaining_fraction: 0.2
+  post_drop_tail_fraction: 0.25

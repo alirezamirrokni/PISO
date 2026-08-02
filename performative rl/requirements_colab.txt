@@ -1,0 +1,6 @@
+numpy
+cvxpy
+tqdm
+matplotlib
+wandb
+pyyaml

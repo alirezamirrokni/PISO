@@ -1,0 +1,158 @@
+experiment:
+  seeds: 20
+  master_seed: 2026
+  max_trajectories: 100000
+  evaluation_interval: 1000
+  n_jobs: 2
+  output_dir: results/piso_rl_reference
+
+environment:
+  beta: 5.00
+  eps: 0.50
+  discount: 0.90
+  num_followers: 1
+  horizon: 100
+
+policy:
+  feature_dim: 32
+  theta_std: 0.10
+  phi_std: 0.20
+
+methods:
+  enabled:
+    - VanillaPG
+    - ZO_TG
+    - ZO_OG
+    - GZO_NS
+    - GZO_HS
+    - GaussianPISO
+    - GuidedPISO
+    - CyclePISO
+    - GaussianPISO2
+    - GuidedPISO2
+    - CyclePISO2
+    - PePG
+
+  VanillaPG:
+    step_size: 0.03
+    step_size_decay: 0.99
+    batch_initial: 100
+    batch_increment: 0
+
+  ZO_TG:
+    radius: 0.20
+    radius_decay: 0.98
+    step_size: 0.03
+    step_size_decay: 0.99
+    batch_initial: 50
+    batch_increment: 0
+
+  ZO_OG:
+    radius: 0.20
+    radius_decay: 0.98
+    step_size: 0.01
+    step_size_decay: 0.99
+    batch_initial: 100
+    batch_increment: 0
+
+  GZO_NS:
+    radius: 0.20
+    radius_decay: 0.98
+    step_size: 0.03
+    step_size_decay: 0.99
+    alpha: 0.90
+    batch_initial: 34
+    batch_increment: 0
+
+  GZO_HS:
+    radius: 0.20
+    radius_decay: 0.98
+    step_size: 0.03
+    step_size_decay: 0.99
+    alpha: 0.90
+    window: 5
+    batch_initial: 50
+    batch_increment: 0
+
+  GaussianPISO:
+    radius: 0.05
+    radius_decay: 0.95
+    step_size: 0.05
+    step_decay: 1.00
+    gamma: 2.00
+    rho: 0.80
+    known_fraction: 0.67
+    batch_initial: 34
+    batch_increment: 0
+
+  GuidedPISO:
+    radius: 0.05
+    radius_decay: 0.95
+    step_size: 0.05
+    step_decay: 1.00
+    gamma: 2.00
+    rho: 0.80
+    known_fraction: 0.67
+    batch_initial: 34
+    batch_increment: 0
+    alpha: 0.90
+
+  CyclePISO:
+    radius: 0.05
+    radius_decay: 0.95
+    step_size: 0.05
+    step_decay: 1.00
+    gamma: 2.00
+    rho: 0.80
+    known_fraction: 0.67
+    batch_initial: 34
+    batch_increment: 0
+    cycle_length: 8
+
+  GaussianPISO2:
+    radius: 0.40
+    radius_decay: 0.95
+    step_size: 0.01
+    step_decay: 1.00
+    gamma: 2.00
+    rho: 0.80
+    known_fraction: 0.67
+    batch_initial: 34
+    batch_increment: 0
+    lambda: 0.50
+
+  GuidedPISO2:
+    radius: 0.40
+    radius_decay: 0.95
+    step_size: 0.01
+    step_decay: 1.00
+    gamma: 2.00
+    rho: 0.80
+    known_fraction: 0.67
+    batch_initial: 34
+    batch_increment: 0
+    lambda: 0.50
+    alpha: 0.90
+
+  CyclePISO2:
+    radius: 0.40
+    radius_decay: 0.95
+    step_size: 0.01
+    step_decay: 1.00
+    gamma: 2.00
+    rho: 0.80
+    known_fraction: 0.67
+    batch_initial: 34
+    batch_increment: 0
+    lambda: 0.50
+    cycle_length: 8
+
+  PePG:
+    step_size: 0.10
+    nu: 0.10
+    warmup: 1
+    num_trajectories: 100
+    model_learning_rate: 0.001
+    value_learning_rate: 0.10
+    regularization: 0.00
+    regularizer: L2
