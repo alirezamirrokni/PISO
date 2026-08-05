@@ -1,4 +1,6 @@
 __pycache__/
-.extra
-docs/
-*.json
+*.py[cod]
+.venv/
+results/
+.extra/
+.pytest_cache/

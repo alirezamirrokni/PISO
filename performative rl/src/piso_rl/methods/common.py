@@ -14,6 +14,15 @@ class Trace:
     final_theta: np.ndarray
     method: str = ""
     seed: int = 0
+    runtime_seconds: float = 0.0
+    oracle_model_calls: int = 0
+    environment_transitions: int = 0
+    minimum_follower_action_gap: float = float("nan")
+    last_gradient_norm: float = float("nan")
+    last_policy_gradient_norm: float = float("nan")
+    last_transition_gradient_norm: float = float("nan")
+    last_reward_gradient_norm: float = float("nan")
+    last_value_loss: float = float("nan")
 
 
 def batch_size(params: dict[str, Any], iteration: int) -> int:
@@ -23,6 +32,94 @@ def batch_size(params: dict[str, Any], iteration: int) -> int:
     if value <= 0:
         raise ValueError("batch size must be positive")
     return value
+
+
+def scheduled_value(
+    params: dict[str, Any],
+    name: str,
+    *,
+    iteration: int,
+    sample_count: int,
+    legacy_decay_key: str | None = None,
+) -> float:
+    """Return a positive, budget-aware optimizer parameter.
+
+    New configurations should use ``<name>_schedule`` with one of:
+    ``constant``, ``inverse_sqrt``, or ``exponential_samples``.  When no
+    schedule is supplied, the legacy per-iteration exponential behavior is
+    retained for backward compatibility.
+    """
+
+    initial = float(params[name])
+    if not np.isfinite(initial) or initial <= 0.0:
+        raise ValueError(f"{name} must be finite and positive")
+
+    schedule_key = f"{name}_schedule"
+    schedule = params.get(schedule_key)
+    if schedule is None:
+        decay_key = legacy_decay_key or f"{name}_decay"
+        decay = float(params.get(decay_key, 1.0))
+        if not 0.0 < decay <= 1.0:
+            raise ValueError(f"{decay_key} must lie in (0, 1]")
+        value = initial * decay ** int(iteration)
+    else:
+        schedule = str(schedule).strip().lower()
+        if schedule == "constant":
+            value = initial
+        elif schedule == "inverse_sqrt":
+            scale = float(params.get(f"{name}_scale", 100_000.0))
+            if not np.isfinite(scale) or scale <= 0.0:
+                raise ValueError(f"{name}_scale must be finite and positive")
+            value = initial / np.sqrt(1.0 + float(sample_count) / scale)
+        elif schedule == "exponential_samples":
+            decay = float(params.get(f"{name}_decay", 1.0))
+            interval = float(params.get(f"{name}_decay_interval", 1_000.0))
+            if not 0.0 < decay <= 1.0:
+                raise ValueError(f"{name}_decay must lie in (0, 1]")
+            if not np.isfinite(interval) or interval <= 0.0:
+                raise ValueError(
+                    f"{name}_decay_interval must be finite and positive"
+                )
+            value = initial * decay ** (float(sample_count) / interval)
+        else:
+            raise ValueError(
+                f"unknown {schedule_key}={schedule!r}; expected constant, "
+                "inverse_sqrt, or exponential_samples"
+            )
+
+    minimum = float(params.get(f"{name}_min", 0.0))
+    if minimum < 0.0 or not np.isfinite(minimum):
+        raise ValueError(f"{name}_min must be finite and nonnegative")
+    return float(max(value, minimum))
+
+
+def clip_gradient(gradient: np.ndarray, max_norm: float | None) -> np.ndarray:
+    array = np.asarray(gradient, dtype=float)
+    if not np.all(np.isfinite(array)):
+        raise FloatingPointError("gradient contains a non-finite value")
+    if max_norm is None:
+        return array
+    limit = float(max_norm)
+    if not np.isfinite(limit) or limit <= 0.0:
+        raise ValueError("gradient_clip_norm must be finite and positive")
+    norm = float(np.linalg.norm(array))
+    if norm <= limit or norm == 0.0:
+        return array
+    return array * (limit / norm)
+
+
+def normalized_occupancy_shift(current: np.ndarray, previous: np.ndarray) -> float:
+    """Symmetric normalized L1 shift, guaranteed to lie in [0, 1]."""
+
+    current_array = np.asarray(current, dtype=float)
+    previous_array = np.asarray(previous, dtype=float)
+    numerator = float(np.sum(np.abs(current_array - previous_array)))
+    denominator = float(
+        np.sum(np.abs(current_array)) + np.sum(np.abs(previous_array))
+    )
+    if denominator <= 0.0:
+        return 0.0
+    return float(np.clip(numerator / denominator, 0.0, 1.0))
 
 
 def _next_interval(sample_count: int, evaluation_interval: int) -> int:
@@ -102,8 +199,7 @@ def record(
     _, rewards, _, occupancy = problem.deploy_exact(state["theta"])
     occupancy = np.asarray(occupancy, dtype=float)
     previous = np.asarray(state["last_occupancy"], dtype=float)
-    denominator = float(np.linalg.norm(previous)) + 1e-12
-    change = float(np.linalg.norm(occupancy - previous) / denominator)
+    change = normalized_occupancy_shift(occupancy, previous)
 
     state["samples"].append(sample_count)
     state["values"].append(float(np.sum(occupancy * np.asarray(rewards))))

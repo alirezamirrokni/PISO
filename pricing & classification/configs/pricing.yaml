@@ -80,17 +80,6 @@ methods:
     known_fraction: 0.5
     batch_initial: 30
     batch_increment: 2
-  GuidedPISO:
-    radius: 0.4
-    radius_decay: 0.96
-    step_size: 0.005
-    step_decay: 0.98
-    gamma: 2.0
-    rho: 0.92
-    known_fraction: 0.5
-    batch_initial: 30
-    batch_increment: 2
-    alpha: 0.98
   CyclePISO:
     radius: 0.4
     radius_decay: 0.96
@@ -113,18 +102,6 @@ methods:
     known_fraction: 0.50
     batch_initial: 30
     batch_increment: 2
-  GuidedPISO2:
-    radius: 0.40
-    radius_decay: 0.96
-    step_size: 5.00e-3
-    step_decay: 1.00
-    gamma: 2.00
-    rho: 0.92
-    lambda: 0.25
-    known_fraction: 0.50
-    batch_initial: 30
-    batch_increment: 2
-    alpha: 0.98
   CyclePISO2:
     radius: 0.40
     radius_decay: 0.96
@@ -144,10 +121,8 @@ plotting:
   - ZO_TG
   - ZO_OGVR
   - GaussianPISO
-  - GuidedPISO
   - CyclePISO
   - GaussianPISO2
-  - GuidedPISO2
   - CyclePISO2
   y_limit_mode: final_window
   final_window_fraction: 0.3

@@ -5,13 +5,14 @@ import json
 import os
 import pickle
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 
-CACHE_VERSION = 1
+CACHE_VERSION = 3
 
 
 def stable_hash(payload: Any) -> str:
@@ -51,6 +52,29 @@ class RunCache:
             **fingerprint_payload,
         }
         self.fingerprint = stable_hash(self.fingerprint_payload)
+        self._runtime_started: float | None = None
+        self._runtime_base = 0.0
+        self.checkpoint_interval = 1
+
+
+    def start_timing(self) -> None:
+        saved = self.load_progress()
+        base = 0.0
+        if saved is not None and isinstance(saved.get("state"), dict):
+            base = float(saved["state"].get("runtime_seconds", 0.0))
+        self._runtime_base = base
+        self._runtime_started = time.perf_counter()
+
+    def elapsed_runtime(self) -> float:
+        if self._runtime_started is None:
+            return float(self._runtime_base)
+        return float(self._runtime_base + time.perf_counter() - self._runtime_started)
+
+    def stop_timing(self) -> float:
+        value = self.elapsed_runtime()
+        self._runtime_base = value
+        self._runtime_started = None
+        return value
 
     def reset(self) -> None:
         if self.directory.exists():
@@ -88,10 +112,16 @@ class RunCache:
             return None
 
     def save_progress(self, state: dict, rng_state: tuple) -> None:
+        iteration = int(state.get("iteration", 0))
+        interval = max(int(self.checkpoint_interval), 1)
+        if iteration > 0 and iteration % interval != 0:
+            return
         self._ensure_manifest()
+        state_to_save = dict(state)
+        state_to_save["runtime_seconds"] = self.elapsed_runtime()
         _atomic_pickle(
             self.progress_path,
-            {"state": state, "rng_state": rng_state},
+            {"state": state_to_save, "rng_state": rng_state},
         )
 
     def load_final(self):

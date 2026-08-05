@@ -21,6 +21,7 @@ from .report import build_reports
 class RunContext:
     max_trajectories: int
     evaluation_interval: int
+    checkpoint_interval: int
 
 
 def _method_seed(master_seed: int, experiment_seed: int, alias: str) -> int:
@@ -29,15 +30,22 @@ def _method_seed(master_seed: int, experiment_seed: int, alias: str) -> int:
     return int.from_bytes(digest[:4], "little") & 0x7FFFFFFF
 
 
-def _build_problem(config: dict, seed: int) -> PerformativeRLProblem:
+def _build_problem(config: dict, experiment_seed: int) -> PerformativeRLProblem:
     environment = config["environment"]
     policy = config["policy"]
+    experiment = config.get("experiment", {})
+    vary_problem = bool(experiment.get("vary_problem_by_seed", False))
+    problem_seed = (
+        int(experiment_seed)
+        if vary_problem
+        else int(experiment.get("problem_seed", 0))
+    )
     return PerformativeRLProblem(
         beta=float(environment["beta"]),
         eps=float(environment["eps"]),
         discount=float(environment["discount"]),
         num_followers=int(environment["num_followers"]),
-        seed=int(seed),
+        seed=problem_seed,
         feature_dim=int(policy.get("feature_dim", 32)),
         theta_std=float(policy.get("theta_std", 0.10)),
         phi_std=float(policy.get("phi_std", 0.20)),
@@ -69,9 +77,12 @@ def _run_single(
         "method_params": method_config,
         "problem": problem.signature(),
         "max_trajectories": context.max_trajectories,
+        "evaluation_interval": context.evaluation_interval,
+        "checkpoint_interval": context.checkpoint_interval,
         "rng_seed": rng_seed,
     }
     cache = RunCache(cache_root, method_name, seed, fingerprint_payload)
+    cache.checkpoint_interval = int(context.checkpoint_interval)
     if reset_cache:
         cache.reset()
 
@@ -79,15 +90,9 @@ def _run_single(
     status = "cached"
     if trace is None:
         status = "computed/resumed"
-        try:
-            trace = method.run(problem, rng, context, cache)
-        except ModuleNotFoundError as error:
-            if method_name == "PePG":
-                raise RuntimeError(
-                    "PePG requires the original repository dependencies. "
-                    "Run `pip install -r requirements_colab.txt`."
-                ) from error
-            raise
+        cache.start_timing()
+        trace = method.run(problem, rng, context, cache)
+        trace.runtime_seconds = cache.stop_timing()
         cache.save_final(trace)
 
     trace.method = method_name
@@ -101,6 +106,10 @@ def run_experiment(
     selected_methods: list[str] | None = None,
     reset_cache: bool = False,
     jobs: int | None = None,
+    seeds: list[int] | None = None,
+    max_trajectories: int | None = None,
+    evaluation_interval: int | None = None,
+    checkpoint_interval: int | None = None,
 ) -> list:
     config = load_config(config_path)
     experiment = config["experiment"]
@@ -115,14 +124,48 @@ def run_experiment(
     if unknown:
         raise ValueError(f"unknown methods: {unknown}; available: {sorted(METHODS)}")
 
-    seeds = [int(seed) for seed in experiment["seeds"]]
-    evaluation_interval = int(experiment.get("evaluation_interval", 1000))
+    run_seeds = [int(seed) for seed in (seeds if seeds is not None else experiment["seeds"])]
+    if not run_seeds:
+        raise ValueError("at least one seed is required")
+    run_evaluation_interval = int(
+        evaluation_interval
+        if evaluation_interval is not None
+        else experiment.get("evaluation_interval", 1000)
+    )
+    run_max_trajectories = int(
+        max_trajectories
+        if max_trajectories is not None
+        else experiment["max_trajectories"]
+    )
+    run_checkpoint_interval = int(
+        checkpoint_interval
+        if checkpoint_interval is not None
+        else experiment.get("checkpoint_interval", 1)
+    )
+    if (
+        run_max_trajectories <= 0
+        or run_evaluation_interval <= 0
+        or run_checkpoint_interval <= 0
+    ):
+        raise ValueError("trajectory, evaluation, and checkpoint intervals must be positive")
     context = RunContext(
-        max_trajectories=int(experiment["max_trajectories"]),
-        evaluation_interval=evaluation_interval,
+        max_trajectories=run_max_trajectories,
+        evaluation_interval=run_evaluation_interval,
+        checkpoint_interval=run_checkpoint_interval,
     )
     master_seed = int(experiment.get("master_seed", 2026))
     n_jobs = int(jobs if jobs is not None else experiment.get("n_jobs", 1))
+
+    # Persist the effective run configuration, including CLI overrides.
+    experiment["seeds"] = list(run_seeds)
+    experiment.setdefault("problem_seed", 0)
+    experiment.setdefault("vary_problem_by_seed", False)
+    experiment["max_trajectories"] = run_max_trajectories
+    experiment["evaluation_interval"] = run_evaluation_interval
+    experiment["checkpoint_interval"] = run_checkpoint_interval
+    experiment["n_jobs"] = n_jobs
+    experiment["output_dir"] = str(output)
+    config["methods"]["enabled"] = list(enabled)
     if n_jobs <= 0:
         raise ValueError("number of jobs must be positive")
     if n_jobs > 1:
@@ -138,7 +181,7 @@ def run_experiment(
     tasks = [
         (index, method_name, seed)
         for index, (seed, method_name) in enumerate(
-            (seed, method_name) for seed in seeds for method_name in enabled
+            (seed, method_name) for seed in run_seeds for method_name in enabled
         )
     ]
     traces_by_index = {}
@@ -165,7 +208,7 @@ def run_experiment(
             )
             progress.update(1)
     else:
-        # Spawn is safer than fork for the optional PyTorch/CVXPY PePG worker.
+        # Spawn avoids inherited mutable NumPy/environment state across workers.
         process_context = mp.get_context("spawn")
         with ProcessPoolExecutor(
             max_workers=n_jobs,
@@ -205,6 +248,7 @@ def run_experiment(
     build_reports(traces, config, output)
     print(
         f"Results and plots written to {output} "
-        f"(jobs={n_jobs}, evaluation_interval={evaluation_interval})"
+        f"(jobs={n_jobs}, evaluation_interval={run_evaluation_interval}, "
+        f"checkpoint_interval={run_checkpoint_interval}, max_trajectories={run_max_trajectories})"
     )
     return traces

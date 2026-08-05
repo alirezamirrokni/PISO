@@ -7,6 +7,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+
+plt.rcParams.update(
+    {
+        "font.size": 14.0,
+        "font.weight": "bold",
+        "axes.labelsize": 17.0,
+        "axes.labelweight": "bold",
+        "axes.titlesize": 17.0,
+        "axes.titleweight": "bold",
+        "xtick.labelsize": 13.0,
+        "ytick.labelsize": 13.0,
+        "legend.fontsize": 12.0,
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+    }
+)
+
 from src.report import DISPLAY_NAMES, STYLES
 
 _METRICS = (
@@ -150,6 +167,18 @@ def _selected_run(raw: pd.DataFrame, figure_run: int) -> pd.DataFrame:
     return selected.reset_index(drop=True)
 
 
+def _format_axis(axis: object) -> None:
+    axis.xaxis.label.set_size(17.0)
+    axis.yaxis.label.set_size(17.0)
+    axis.xaxis.label.set_weight("bold")
+    axis.yaxis.label.set_weight("bold")
+    axis.title.set_size(17.0)
+    axis.title.set_weight("bold")
+    for tick in [*axis.get_xticklabels(), *axis.get_yticklabels()]:
+        tick.set_fontsize(13.0)
+        tick.set_fontweight("bold")
+
+
 def _plot(
     aggregate: pd.DataFrame,
     methods: list[str],
@@ -160,7 +189,7 @@ def _plot(
         # Three equally sized panels on the first row and two centered panels on
         # the second row. A six-column GridSpec gives every panel width two while
         # leaving one column of symmetric whitespace on each side of row two.
-        figure = plt.figure(figsize=(15.6, 7.8))
+        figure = plt.figure(figsize=(17.2, 9.4))
         grid = figure.add_gridspec(2, 6)
         axes_list = [
             figure.add_subplot(grid[0, 0:2]),
@@ -175,7 +204,7 @@ def _plot(
         figure, axes = plt.subplots(
             rows,
             columns,
-            figsize=(5.2 * columns, 3.9 * rows),
+            figsize=(5.75 * columns, 4.65 * rows),
             squeeze=False,
         )
         axes_list = list(axes.ravel())
@@ -208,8 +237,8 @@ def _plot(
                 values["samples"],
                 values["train_loss_mean"],
                 label=DISPLAY_NAMES.get(method, method),
-                linewidth=1.55,
-                markersize=3.4,
+                linewidth=2.20,
+                markersize=5.5,
                 markevery=max(1, len(values) // 10),
                 zorder=3,
                 **style,
@@ -219,6 +248,7 @@ def _plot(
         axis.set_xlabel("sample number")
         axis.set_ylabel("train loss")
         axis.grid(True, alpha=0.35)
+        _format_axis(axis)
 
     for axis in axes_list[len(taus):]:
         axis.axis("off")
@@ -229,11 +259,15 @@ def _plot(
             ordered,
             labels,
             loc="lower center",
-            ncol=min(6, len(ordered)),
-            bbox_to_anchor=(0.5, -0.01),
+            ncol=len(ordered),
+            bbox_to_anchor=(0.5, 0.01),
             frameon=False,
+            prop={"size": 12.0, "weight": "bold"},
+            handlelength=1.25,
+            columnspacing=0.48,
+            handletextpad=0.28,
         )
-    figure.tight_layout(rect=(0.0, 0.07, 1.0, 1.0))
+    figure.tight_layout(rect=(0.0, 0.125, 1.0, 1.0))
     figure.savefig(output_dir / "figure.png", dpi=240, bbox_inches="tight")
     figure.savefig(output_dir / "figure.pdf", bbox_inches="tight")
     plt.close(figure)

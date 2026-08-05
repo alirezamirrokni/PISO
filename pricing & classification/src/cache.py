@@ -153,7 +153,7 @@ def build_method_fingerprint(
         ),
         (project_root / "data" / "prices" / f"2022_{week_id}.csv", None, ()),
     ]
-    if method in {"GaussianPISO", "GuidedPISO", "CyclePISO", "GaussianPISO2", "GuidedPISO2", "CyclePISO2"}:
+    if method in {"GaussianPISO", "CyclePISO", "GaussianPISO2", "CyclePISO2"}:
         tracked_paths.append(
             (
                 pricing_methods / "general_piso.py",
@@ -208,7 +208,7 @@ def _run_tag(config: dict[str, Any]) -> str:
 
 def _method_tag(method: str, params: dict[str, Any]) -> str:
     """Build a concise readable cache prefix plus a full-config digest."""
-    if method in {"GaussianPISO", "GuidedPISO", "CyclePISO", "GaussianPISO2", "GuidedPISO2", "CyclePISO2"}:
+    if method in {"GaussianPISO", "CyclePISO", "GaussianPISO2", "CyclePISO2"}:
         keys = [
             ("radius", "r"), ("radius_decay", "rd"),
             ("step_size", "s"), ("step_decay", "sd"),
@@ -217,8 +217,6 @@ def _method_tag(method: str, params: dict[str, Any]) -> str:
         ]
         if method.endswith("PISO2"):
             keys.append(("lambda", "l"))
-        if method in {"GuidedPISO", "GuidedPISO2"}:
-            keys.append(("alpha", "a"))
         if method in {"CyclePISO", "CyclePISO2"}:
             keys.append(("cycle_length", "c"))
     else:
@@ -233,7 +231,7 @@ def _method_tag(method: str, params: dict[str, Any]) -> str:
     for key, label in keys:
         if key in params:
             parts.append(f"{label}{_compact_safe(params[key])}")
-    if method in {"GaussianPISO", "GuidedPISO", "CyclePISO", "GaussianPISO2", "GuidedPISO2", "CyclePISO2"}:
+    if method in {"GaussianPISO", "CyclePISO", "GaussianPISO2", "CyclePISO2"}:
         config_digest = hashlib.sha256(
             json.dumps(params, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()[:10]

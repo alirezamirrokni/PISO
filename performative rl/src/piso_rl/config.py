@@ -33,8 +33,22 @@ def load_config(path: str | Path) -> dict[str, Any]:
         raise ConfigError("experiment.evaluation_interval must be positive")
     if int(experiment.get("n_jobs", 1)) <= 0:
         raise ConfigError("experiment.n_jobs must be positive")
+    if int(experiment.get("checkpoint_interval", 1)) <= 0:
+        raise ConfigError("experiment.checkpoint_interval must be positive")
 
     enabled = config["methods"].get("enabled", [])
     if not isinstance(enabled, list) or not enabled:
         raise ConfigError("methods.enabled must be a nonempty list")
+
+    report = config.setdefault("report", {})
+    if not isinstance(report, dict):
+        raise ConfigError("report must be a mapping")
+    plotting_methods = report.get("plotting_methods", enabled)
+    if not isinstance(plotting_methods, list) or not plotting_methods:
+        raise ConfigError("report.plotting_methods must be a nonempty list")
+    if any(not isinstance(name, str) or not name.strip() for name in plotting_methods):
+        raise ConfigError("report.plotting_methods entries must be nonempty strings")
+    if len(set(plotting_methods)) != len(plotting_methods):
+        raise ConfigError("report.plotting_methods must not contain duplicates")
+    report["plotting_methods"] = list(plotting_methods)
     return config

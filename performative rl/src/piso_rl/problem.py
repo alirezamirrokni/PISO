@@ -133,21 +133,165 @@ class PerformativeRLProblem:
         self._policy_probabilities = probabilities
         return probabilities
 
+
+    def validate_policy_probabilities(self, probabilities: np.ndarray) -> np.ndarray:
+        """Validate and normalize a tabular principal policy.
+
+        This keeps tabular-policy validation separate from the feature-softmax
+        parameterization used by the gradient methods.
+        """
+        array = np.asarray(probabilities, dtype=float)
+        expected_shape = (self.env.dim, len(self.env.agents[1].actions))
+        if array.shape != expected_shape:
+            raise ValueError(
+                f"policy probabilities must have shape {expected_shape}, "
+                f"got {array.shape}"
+            )
+        if not np.all(np.isfinite(array)) or np.any(array < 0.0):
+            raise ValueError("policy probabilities must be finite and nonnegative")
+        row_sums = array.sum(axis=1, keepdims=True)
+        if np.any(row_sums <= 0.0):
+            raise ValueError("every policy row must have positive mass")
+        return array / row_sums
+
+    def follower_policy_from_probabilities(
+        self, principal_probabilities: np.ndarray
+    ) -> np.ndarray:
+        """Return the follower response induced by a tabular principal policy."""
+        inducing_probabilities = self.validate_policy_probabilities(
+            principal_probabilities
+        )
+        q_values = [
+            self.env._best_response_q_vectorized(
+                inducing_probabilities, perturbed_grid
+            )
+            for perturbed_grid in self.env.pertrubed_grids
+        ]
+        average_q = np.mean(q_values, axis=0)
+        logits = float(self.env.beta) * average_q
+        logits -= np.max(logits, axis=1, keepdims=True)
+        probabilities = np.exp(logits)
+        probabilities /= np.sum(probabilities, axis=1, keepdims=True)
+        return np.asarray(probabilities, dtype=float)
+
+    def follower_policy(self, environment_theta: np.ndarray) -> np.ndarray:
+        """Pure follower response induced by ``environment_theta``.
+
+        The previous implementation called ``env.response_model`` by mutating
+        the environment's agent policies.  That interacted badly with the
+        deployment cache: a finite-difference query could leave the mutable
+        environment at ``theta-minus`` while later evaluation reused cached
+        arrays for ``theta``.  This implementation computes the same response
+        directly from policy probabilities and never mutates agent state.
+        """
+        environment_theta = self._validate_theta(environment_theta)
+        return self.follower_policy_from_probabilities(
+            self.policy(environment_theta)
+        )
+
+    def cross_deployment(
+        self,
+        policy_theta: np.ndarray,
+        environment_theta: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Return actor probabilities and a separately induced response."""
+        actor = np.asarray(self.policy(policy_theta), dtype=float).copy()
+        follower = self.follower_policy(environment_theta)
+        return actor, follower
+
+    def _model_from_probabilities(
+        self,
+        actor: np.ndarray,
+        follower: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Build exact reward, transition, and episodic occupancy arrays."""
+        actor = np.asarray(actor, dtype=float)
+        follower = np.asarray(follower, dtype=float)
+        rewards = np.einsum(
+            "sf,saf->sa",
+            follower,
+            self.env._principal_joint_rewards,
+            optimize=True,
+        )
+        transitions = np.zeros(
+            (self.env.dim, len(self.env.moves), self.env.dim), dtype=float
+        )
+        states = np.arange(self.env.dim, dtype=int)
+        for action in self.env.moves:
+            for follower_action in self.env.interventions:
+                next_states = self.env._joint_next[:, action, follower_action]
+                transitions[states, action, next_states] += follower[:, follower_action]
+
+        # Episodes terminate on arrival at the terminal state.  Solve the
+        # discounted occupancy system only on nonterminal states, matching the
+        # rollout semantics exactly and avoiding the old tolerance-dependent
+        # fixed-point approximation in Gridworld._get_d.
+        terminal = int(self.env.terminal_state_id)
+        nonterminal = np.asarray(
+            [state for state in range(self.env.dim) if state != terminal],
+            dtype=int,
+        )
+        policy_transition = np.einsum(
+            "sa,san->sn", actor, transitions, optimize=True
+        )
+        restricted = policy_transition[np.ix_(nonterminal, nonterminal)]
+        state_mass = np.linalg.solve(
+            np.eye(nonterminal.size, dtype=float)
+            - self.discount * restricted.T,
+            np.asarray(self.env.rho, dtype=float)[nonterminal],
+        )
+        occupancy = np.zeros_like(actor, dtype=float)
+        occupancy[nonterminal] = state_mass[:, None] * actor[nonterminal]
+        return rewards, transitions, occupancy
+
+    def deploy_policy_exact(
+        self, principal_probabilities: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Exactly deploy an arbitrary tabular principal policy."""
+        actor = self.validate_policy_probabilities(principal_probabilities)
+        follower = self.follower_policy_from_probabilities(actor)
+        rewards, transitions, occupancy = self._model_from_probabilities(
+            actor, follower
+        )
+        return actor.copy(), rewards, transitions, occupancy
+
+    def sample_policy_trajectories(
+        self,
+        principal_probabilities: np.ndarray,
+        count: int,
+        rng: np.random.RandomState,
+    ) -> list[Trajectory]:
+        """Sample trajectories from an arbitrary tabular principal policy."""
+        count = int(count)
+        if count <= 0:
+            raise ValueError("trajectory count must be positive")
+        actor = self.validate_policy_probabilities(principal_probabilities)
+        follower = self.follower_policy_from_probabilities(actor)
+        return [
+            self._sample_trajectory_from_probabilities(actor, follower, rng)
+            for _ in range(count)
+        ]
+
+    def exact_cross_value(
+        self,
+        policy_theta: np.ndarray,
+        environment_theta: np.ndarray,
+    ) -> float:
+        """Exactly evaluate ``J(policy_theta, environment_theta)``."""
+        actor, follower = self.cross_deployment(policy_theta, environment_theta)
+        rewards, _, occupancy = self._model_from_probabilities(actor, follower)
+        return float(np.sum(occupancy * rewards))
+
     def deploy_sampling(self, theta: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Deploy only the principal and follower policies needed for rollouts."""
+        """Return cached principal/follower probability arrays for rollouts."""
         theta = self._validate_theta(theta)
         if self._same_theta(self._deployed_theta, theta):
             assert self._deployed_principal is not None
             assert self._deployed_follower is not None
             return self._deployed_principal, self._deployed_follower
 
-        principal = self.env.agents[1]
-        follower = self.env.agents[2]
-        principal_probabilities = self.policy(theta)
-        principal.policy = Tabular(principal.actions, principal_probabilities)
-        follower.policy = self.env.response_model(self.env.agents)
-        follower_probabilities = self.env._policy_matrix(follower)
-
+        principal_probabilities = np.asarray(self.policy(theta), dtype=float).copy()
+        follower_probabilities = self.follower_policy(theta)
         self._deployed_theta = theta.copy()
         self._deployed_principal = principal_probabilities
         self._deployed_follower = follower_probabilities
@@ -156,14 +300,14 @@ class PerformativeRLProblem:
     def deploy_exact(
         self, theta: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Deploy policies and construct exact rewards, transitions, occupancy."""
-        probabilities, _ = self.deploy_sampling(theta)
-        principal = self.env.agents[1]
-        rewards, transitions = self.env._get_exact_RT()
-        occupancy = self.env._get_d(transitions, principal)
+        """Deploy and exactly construct rewards, transitions, and occupancy."""
+        probabilities, follower = self.deploy_sampling(theta)
+        rewards, transitions, occupancy = self._model_from_probabilities(
+            probabilities, follower
+        )
         return probabilities, rewards, transitions, occupancy
 
-    # Backward-compatible alias used by the PePG adapter and older caches.
+    # Backward-compatible alias retained for older callers.
     def deploy(
         self, theta: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -185,21 +329,12 @@ class PerformativeRLProblem:
         del metric_samples, rng
         return -self.exact_value(theta)
 
-    def sample_trajectory(
+    def _sample_trajectory_from_probabilities(
         self,
-        theta: np.ndarray,
+        principal_probabilities: np.ndarray,
+        follower_probabilities: np.ndarray,
         rng: np.random.RandomState,
-        *,
-        already_deployed: bool = False,
     ) -> Trajectory:
-        if already_deployed:
-            principal_probabilities = self._deployed_principal
-            follower_probabilities = self._deployed_follower
-            if principal_probabilities is None or follower_probabilities is None:
-                raise RuntimeError("already_deployed=True without a deployed policy")
-        else:
-            principal_probabilities, follower_probabilities = self.deploy_sampling(theta)
-
         state = int(rng.choice(self._states, p=self.env.rho))
         trajectory: Trajectory = []
         terminal = int(self.env.terminal_state_id)
@@ -227,6 +362,24 @@ class PerformativeRLProblem:
             state = next_state
 
         return trajectory
+
+    def sample_trajectory(
+        self,
+        theta: np.ndarray,
+        rng: np.random.RandomState,
+        *,
+        already_deployed: bool = False,
+    ) -> Trajectory:
+        if already_deployed:
+            principal_probabilities = self._deployed_principal
+            follower_probabilities = self._deployed_follower
+            if principal_probabilities is None or follower_probabilities is None:
+                raise RuntimeError("already_deployed=True without a deployed policy")
+        else:
+            principal_probabilities, follower_probabilities = self.deploy_sampling(theta)
+        return self._sample_trajectory_from_probabilities(
+            principal_probabilities, follower_probabilities, rng
+        )
 
     def sample_trajectories(
         self,
@@ -264,6 +417,68 @@ class PerformativeRLProblem:
             count=len(trajectories),
         )
         return -returns, trajectories
+
+    def sample_paired_losses(
+        self,
+        theta_plus: np.ndarray,
+        theta_minus: np.ndarray,
+        count: int,
+        rng: np.random.RandomState,
+    ) -> tuple[np.ndarray, list[Trajectory], np.ndarray, list[Trajectory]]:
+        """Sample antithetic queries with common random numbers.
+
+        Every plus/minus trajectory pair receives the same independent child
+        seed.  This preserves unbiased marginal rollouts while substantially
+        reducing the variance of finite-difference estimates.  Separate child
+        generators prevent one early terminal episode from de-synchronizing
+        later trajectory pairs.
+        """
+
+        count = int(count)
+        if count <= 0:
+            raise ValueError("trajectory count must be positive")
+        seeds = rng.randint(0, 2**31 - 1, size=count, dtype=np.int64)
+        plus_principal, plus_follower = self.deploy_sampling(theta_plus)
+        plus_principal = np.asarray(plus_principal, dtype=float).copy()
+        plus_follower = np.asarray(plus_follower, dtype=float).copy()
+        minus_principal, minus_follower = self.deploy_sampling(theta_minus)
+        minus_principal = np.asarray(minus_principal, dtype=float).copy()
+        minus_follower = np.asarray(minus_follower, dtype=float).copy()
+
+        plus_trajectories: list[Trajectory] = []
+        minus_trajectories: list[Trajectory] = []
+        for child_seed in seeds:
+            seed_value = int(child_seed)
+            plus_rng = np.random.RandomState(seed_value)
+            minus_rng = np.random.RandomState(seed_value)
+            plus_trajectories.append(
+                self._sample_trajectory_from_probabilities(
+                    plus_principal, plus_follower, plus_rng
+                )
+            )
+            minus_trajectories.append(
+                self._sample_trajectory_from_probabilities(
+                    minus_principal, minus_follower, minus_rng
+                )
+            )
+
+        plus_returns = np.fromiter(
+            (self.discounted_return(t) for t in plus_trajectories),
+            dtype=float,
+            count=count,
+        )
+        minus_returns = np.fromiter(
+            (self.discounted_return(t) for t in minus_trajectories),
+            dtype=float,
+            count=count,
+        )
+        return (
+            -plus_returns,
+            plus_trajectories,
+            -minus_returns,
+            minus_trajectories,
+        )
+
 
     def sample_observations(
         self,

@@ -1,158 +1,257 @@
 experiment:
-  seeds: 20
+  seeds:
+  - 100
+  - 101
+  - 102
+  - 103
+  - 104
+  - 105
+  - 106
+  - 107
+  - 108
+  - 109
+  - 110
+  - 111
+  - 112
+  - 113
+  - 114
+  - 115
+  - 116
+  - 117
+  - 118
+  - 119
   master_seed: 2026
+  problem_seed: 0
+  vary_problem_by_seed: false
   max_trajectories: 100000
   evaluation_interval: 1000
-  n_jobs: 2
-  output_dir: results/piso_rl_reference
-
+  checkpoint_interval: 10
+  n_jobs: 8
+  output_dir: results/piso_v4_heldout
+report:
+  smoothing_window: 5
+  show_raw_curves: false
+  plotting_methods:
+  - VanillaPG
+  - ZO_TG
+  - ZO_OGVR
+  - GZO_NS
+  - GZO_HS
+  - GaussianPISO
+  - CyclePISO
+  - GaussianPISO2
+  - CyclePISO2
+  - PePG
+  total_iterations: 1000
 environment:
-  beta: 5.00
-  eps: 0.50
-  discount: 0.90
+  beta: 5.0
+  eps: 0.5
+  discount: 0.9
   num_followers: 1
   horizon: 100
-
 policy:
   feature_dim: 32
-  theta_std: 0.10
-  phi_std: 0.20
-
+  theta_std: 0.1
+  phi_std: 0.2
 methods:
   enabled:
-    - VanillaPG
-    - ZO_TG
-    - ZO_OG
-    - GZO_NS
-    - GZO_HS
-    - GaussianPISO
-    - GuidedPISO
-    - CyclePISO
-    - GaussianPISO2
-    - GuidedPISO2
-    - CyclePISO2
-    - PePG
-
+  - VanillaPG
+  - ZO_TG
+  - ZO_OG
+  - ZO_OGVR
+  - GZO_NS
+  - GZO_HS
+  - GaussianPISO
+  - CyclePISO
+  - GaussianPISO2
+  - CyclePISO2
+  - PePG
+  - OraclePePG
   VanillaPG:
-    step_size: 0.03
-    step_size_decay: 0.99
+    step_size: 0.05
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.02
     batch_initial: 100
     batch_increment: 0
-
+    gradient_clip_norm: 0.25
   ZO_TG:
-    radius: 0.20
-    radius_decay: 0.98
-    step_size: 0.03
-    step_size_decay: 0.99
+    radius: 1.0
+    radius_schedule: inverse_sqrt
+    radius_scale: 200000
+    radius_min: 0.5
+    step_size: 0.1
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.03
     batch_initial: 50
     batch_increment: 0
-
+    gradient_clip_norm: 0.25
   ZO_OG:
-    radius: 0.20
-    radius_decay: 0.98
-    step_size: 0.01
-    step_size_decay: 0.99
+    radius: 1.0
+    radius_schedule: inverse_sqrt
+    radius_scale: 200000
+    radius_min: 0.5
+    step_size: 0.02
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.005
     batch_initial: 100
     batch_increment: 0
-
-  GZO_NS:
-    radius: 0.20
-    radius_decay: 0.98
-    step_size: 0.03
-    step_size_decay: 0.99
-    alpha: 0.90
-    batch_initial: 34
+    baseline_decay: 0.98
+    gradient_clip_norm: 0.25
+  ZO_OGVR:
+    radius: 1.0
+    radius_schedule: inverse_sqrt
+    radius_scale: 200000
+    radius_min: 0.5
+    step_size: 0.02
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.005
+    batch_initial: 100
     batch_increment: 0
-
+    initial_baseline_batch: 100
+    history_window: 10
+    distance_weight: 0.1
+    gradient_clip_norm: 0.25
+  GZO_NS:
+    radius: 1.0
+    radius_schedule: inverse_sqrt
+    radius_scale: 200000
+    radius_min: 0.5
+    step_size: 0.1
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.03
+    batch_initial: 34
+    total_batch: 100
+    known_batch: 34
+    batch_increment: 0
+    alpha: 0.9
+    gradient_clip_norm: 0.25
   GZO_HS:
-    radius: 0.20
-    radius_decay: 0.98
-    step_size: 0.03
-    step_size_decay: 0.99
-    alpha: 0.90
-    window: 5
+    radius: 1.0
+    radius_schedule: inverse_sqrt
+    radius_scale: 200000
+    radius_min: 0.5
+    step_size: 0.1
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.03
+    alpha: 0.9
+    window: 10
     batch_initial: 50
     batch_increment: 0
-
+    gradient_clip_norm: 0.25
   GaussianPISO:
-    radius: 0.05
-    radius_decay: 0.95
-    step_size: 0.05
-    step_decay: 1.00
-    gamma: 2.00
-    rho: 0.80
-    known_fraction: 0.67
+    radius: 1.0
+    radius_schedule: inverse_sqrt
+    radius_scale: 300000
+    radius_min: 0.5
+    step_size: 0.1
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.03
+    gamma: 1.0
+    rho: 0.98
+    known_fraction: 0.5
     batch_initial: 34
+    total_batch: 100
     batch_increment: 0
-
-  GuidedPISO:
-    radius: 0.05
-    radius_decay: 0.95
-    step_size: 0.05
-    step_decay: 1.00
-    gamma: 2.00
-    rho: 0.80
-    known_fraction: 0.67
-    batch_initial: 34
-    batch_increment: 0
-    alpha: 0.90
-
+    directions_per_update: 1
+    rls_forgetting: 0.997
+    rls_ridge: 4.0
+    residual_warmup_directions: 64
+    residual_clip_norm: 0.05
+    directional_derivative_clip: 0.5
+    gradient_clip_norm: 0.25
   CyclePISO:
-    radius: 0.05
-    radius_decay: 0.95
-    step_size: 0.05
-    step_decay: 1.00
-    gamma: 2.00
-    rho: 0.80
-    known_fraction: 0.67
+    radius: 1.0
+    radius_schedule: inverse_sqrt
+    radius_scale: 300000
+    radius_min: 0.5
+    step_size: 0.1
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.03
+    gamma: 1.0
+    rho: 0.98
+    known_fraction: 0.5
     batch_initial: 34
+    total_batch: 100
     batch_increment: 0
-    cycle_length: 8
-
+    directions_per_update: 1
+    rls_forgetting: 0.997
+    rls_ridge: 4.0
+    residual_warmup_directions: 64
+    residual_clip_norm: 0.05
+    directional_derivative_clip: 0.5
+    gradient_clip_norm: 0.25
+    cycle_length: 16
   GaussianPISO2:
-    radius: 0.40
-    radius_decay: 0.95
-    step_size: 0.01
-    step_decay: 1.00
-    gamma: 2.00
-    rho: 0.80
-    known_fraction: 0.67
+    radius: 1.0
+    radius_schedule: inverse_sqrt
+    radius_scale: 300000
+    radius_min: 0.5
+    step_size: 0.1
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.03
+    gamma: 1.0
+    rho: 0.98
+    known_fraction: 0.5
     batch_initial: 34
+    total_batch: 100
     batch_increment: 0
-    lambda: 0.50
-
-  GuidedPISO2:
-    radius: 0.40
-    radius_decay: 0.95
-    step_size: 0.01
-    step_decay: 1.00
-    gamma: 2.00
-    rho: 0.80
-    known_fraction: 0.67
-    batch_initial: 34
-    batch_increment: 0
-    lambda: 0.50
-    alpha: 0.90
-
+    directions_per_update: 1
+    rls_forgetting: 0.997
+    rls_ridge: 4.0
+    residual_warmup_directions: 64
+    residual_clip_norm: 0.05
+    directional_derivative_clip: 0.5
+    gradient_clip_norm: 0.25
+    lambda: 0.1
   CyclePISO2:
-    radius: 0.40
-    radius_decay: 0.95
-    step_size: 0.01
-    step_decay: 1.00
-    gamma: 2.00
-    rho: 0.80
-    known_fraction: 0.67
+    radius: 1.0
+    radius_schedule: inverse_sqrt
+    radius_scale: 300000
+    radius_min: 0.5
+    step_size: 0.1
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.03
+    gamma: 1.0
+    rho: 0.98
+    known_fraction: 0.5
     batch_initial: 34
+    total_batch: 100
     batch_increment: 0
-    lambda: 0.50
-    cycle_length: 8
-
+    directions_per_update: 1
+    rls_forgetting: 0.997
+    rls_ridge: 4.0
+    residual_warmup_directions: 64
+    residual_clip_norm: 0.05
+    directional_derivative_clip: 0.5
+    gradient_clip_norm: 0.25
+    lambda: 0.1
+    cycle_length: 16
   PePG:
-    step_size: 0.10
-    nu: 0.10
-    warmup: 1
-    num_trajectories: 100
-    model_learning_rate: 0.001
-    value_learning_rate: 0.10
-    regularization: 0.00
-    regularizer: L2
+    step_size: 0.5
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.1
+    batch_initial: 100
+    batch_increment: 0
+    gradient_clip_norm: 0.25
+    transition_probability_floor: 1.0e-12
+  OraclePePG:
+    step_size: 2.0
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 100000
+    step_size_min: 0.5
+    equivalent_batch: 100
+    armijo: 0.0001
+    backtrack_factor: 0.5
+    minimum_step: 1.0e-08
+    max_backtracks: 20

@@ -5,6 +5,7 @@ import numpy as np
 from .common import (
     batch_size,
     can_afford,
+    clip_gradient,
     finish,
     initialize_state,
     record,
@@ -13,18 +14,37 @@ from .common import (
 )
 from .piso_utils import (
     allocate_batches,
-    guided_covariance_geometry,
+    clip_vector,
     haar_frame,
     known_gradient,
     radius,
+    split_direction_batches,
     step_size,
     two_level_residual,
+    update_residual_rls,
     validate_common_params,
     validate_two_level,
 )
 
 
 class _BasePISO:
+    """Policy-informed stochastic optimisation using deployable queries only.
+
+    Let ``F(theta) = -J(theta, theta)`` be the loss on the performative
+    diagonal.  PISO combines a score-function estimate of the ordinary policy
+    component with directional finite differences of the *same diagonal
+    objective*.  For direction ``u``,
+
+        dF(theta)[u] = partial_policy F(theta, theta)[u]
+                     + partial_shift  F(theta, theta)[u].
+
+    The shift observation is therefore the diagonal finite difference minus the
+    current policy-gradient projection.  No query holds the acting policy fixed
+    while changing only the environment-inducing policy; that cross-deployment
+    operation is not available to Vanilla PG or the ZO/GZO baselines and would
+    make the comparison unfair.
+    """
+
     variant = "gaussian"
     two_level = False
     name = "PISO"
@@ -35,32 +55,25 @@ class _BasePISO:
         validate_common_params(self.p, self.name)
         if self.two_level:
             validate_two_level(self.p, self.name)
-        if self.variant == "guided":
-            alpha = float(self.p["alpha"])
-            if not 0.0 < alpha <= 1.0:
-                raise ValueError(f"{self.name} alpha must lie in (0, 1]")
-        if self.variant == "cycle":
-            if int(self.p["cycle_length"]) <= 0:
-                raise ValueError(f"{self.name} cycle_length must be positive")
+        if self.variant == "cycle" and int(self.p["cycle_length"]) <= 0:
+            raise ValueError(f"{self.name} cycle_length must be positive")
 
     def _initialize(self, problem, rng, evaluation_interval):
         state = initialize_state(problem, evaluation_interval)
-        state["residual_momentum"] = np.zeros(problem.n, dtype=float)
+        state["residual_gram"] = np.zeros((problem.n, problem.n), dtype=float)
+        state["residual_rhs"] = np.zeros(problem.n, dtype=float)
+        state["residual_estimate"] = np.zeros(problem.n, dtype=float)
+        state["fast_residual"] = np.zeros(problem.n, dtype=float)
+        state["residual_observations"] = 0
         if self.variant == "cycle":
             cycle_length = min(int(self.p["cycle_length"]), problem.n)
             state["direction_frame"] = haar_frame(rng, problem.n, cycle_length)
             state["cycle_position"] = 0
         return state
 
-    def _direction_and_score(
-        self,
-        problem,
-        rng,
-        state,
-        gradient_known: np.ndarray | None,
-    ) -> tuple[np.ndarray, np.ndarray, float]:
+    def _direction_and_score(self, problem, rng, state):
         iteration = int(state["iteration"])
-        current_radius = radius(self.p, iteration)
+        current_radius = radius(self.p, iteration, int(state["sample_count"]))
 
         if self.variant == "gaussian":
             direction = rng.normal(size=problem.n)
@@ -72,30 +85,7 @@ class _BasePISO:
             direction = np.sqrt(problem.n) * frame[:, position]
             return direction, direction, current_radius / np.sqrt(problem.n)
 
-        if gradient_known is None:
-            raise RuntimeError("guided PISO requires a known-gradient estimate")
-        norm = float(np.linalg.norm(gradient_known))
-        hint = (
-            gradient_known / norm
-            if norm > 0.0
-            else np.zeros(problem.n, dtype=float)
-        )
-        alpha = float(self.p["alpha"])
-        parallel, orthogonal = guided_covariance_geometry(alpha, problem.n, hint)
-        isotropic = rng.normal(size=problem.n)
-        scalar = float(rng.normal())
-        direction = (
-            np.sqrt(orthogonal) * isotropic
-            + np.sqrt(1.0 - alpha) * scalar * hint
-        )
-        if norm > 0.0:
-            projection = float(np.dot(hint, direction))
-            parallel_component = projection * hint
-            orthogonal_component = direction - parallel_component
-            score = parallel_component / parallel + orthogonal_component / orthogonal
-        else:
-            score = direction / orthogonal
-        return direction, score, current_radius
+        raise RuntimeError(f"unsupported PISO variant: {self.variant}")
 
     def _advance_cycle(self, problem, rng, state) -> None:
         if self.variant != "cycle":
@@ -114,9 +104,16 @@ class _BasePISO:
             lambda: self._initialize(problem, rng, context.evaluation_interval),
             context.evaluation_interval,
         )
-        gamma = float(self.p["gamma"])
-        rho = float(self.p["rho"])
+        state.setdefault("residual_gram", np.zeros((problem.n, problem.n)))
+        state.setdefault("residual_rhs", np.zeros(problem.n))
+        state.setdefault("residual_estimate", np.zeros(problem.n))
+        state.setdefault("fast_residual", np.zeros(problem.n))
+        state.setdefault("residual_observations", 0)
+
+        known_weight = float(self.p["gamma"])
+        fast_decay = float(self.p["rho"])
         mixing = float(self.p.get("lambda", 0.0))
+        directions_per_update = int(self.p.get("directions_per_update", 1))
 
         while True:
             iteration = int(state["iteration"])
@@ -124,55 +121,88 @@ class _BasePISO:
             known_count, plus_count, minus_count = allocate_batches(
                 self.p, iteration_batch
             )
+            if plus_count != minus_count:
+                raise RuntimeError("paired PISO queries require equal batch sizes")
             cost = known_count + plus_count + minus_count
             if not can_afford(state, cost, context.max_trajectories):
                 break
 
-            # Guided PISO needs g_K before drawing its shaped direction.  The
-            # other variants use the same order for deterministic accounting.
-            observations = problem.sample_observations(
-                state["theta"], known_count, rng
-            )
-            gradient_known = known_gradient(
-                problem, state["theta"], observations
-            )
-            direction, score, mu = self._direction_and_score(
-                problem, rng, state, gradient_known
-            )
+            theta = np.asarray(state["theta"], dtype=float)
+            observations = problem.sample_observations(theta, known_count, rng)
+            gradient_known = known_gradient(problem, theta, observations)
 
-            plus, _ = problem.sample_losses(
-                state["theta"] + mu * direction, plus_count, rng
+            direction_batches = split_direction_batches(
+                plus_count, directions_per_update
             )
-            minus, _ = problem.sample_losses(
-                state["theta"] - mu * direction, minus_count, rng
-            )
-            derivative = float((plus.mean() - minus.mean()) / (2.0 * mu))
+            directions: list[np.ndarray] = []
+            scores: list[np.ndarray] = []
+            derivatives: list[float] = []
+            derivative_clip = self.p.get("directional_derivative_clip")
 
-            control = gamma * gradient_known + state["residual_momentum"]
-            innovation = derivative - float(np.dot(control, direction))
-            residual = state["residual_momentum"] + innovation * score
-
-            if self.two_level:
-                new_momentum, residual_direction = two_level_residual(
-                    residual,
-                    state["residual_momentum"],
-                    rho,
-                    mixing,
+            for query_count in direction_batches:
+                direction, score, mu = self._direction_and_score(
+                    problem, rng, state
                 )
-            else:
-                new_momentum = (
-                    rho * state["residual_momentum"]
-                    + (1.0 - rho) * residual
+                plus, _, minus, _ = problem.sample_paired_losses(
+                    theta + mu * direction,
+                    theta - mu * direction,
+                    query_count,
+                    rng,
                 )
-                residual_direction = new_momentum
+                diagonal_derivative = float(
+                    (plus.mean() - minus.mean()) / (2.0 * mu)
+                )
+                policy_derivative = float(np.dot(gradient_known, direction))
+                shift_derivative = diagonal_derivative - policy_derivative
+                if derivative_clip is not None:
+                    limit = float(derivative_clip)
+                    shift_derivative = float(
+                        np.clip(shift_derivative, -limit, limit)
+                    )
+                directions.append(np.asarray(direction, dtype=float))
+                scores.append(np.asarray(score, dtype=float))
+                derivatives.append(shift_derivative)
+                self._advance_cycle(problem, rng, state)
 
-            gradient = gamma * gradient_known + residual_direction
-            eta = step_size(self.p, iteration)
+            slow_residual = update_residual_rls(
+                state,
+                directions,
+                derivatives,
+                forgetting=float(self.p.get("rls_forgetting", 1.0)),
+                ridge=float(self.p.get("rls_ridge", 1.0)),
+                clip_norm=self.p.get("residual_clip_norm"),
+                warmup_directions=int(
+                    self.p.get("residual_warmup_directions", problem.n)
+                ),
+            )
+
+            instant_residual = np.mean(
+                [value * score for value, score in zip(derivatives, scores)],
+                axis=0,
+            )
+            instant_residual = clip_vector(
+                instant_residual, self.p.get("residual_clip_norm")
+            )
+            fast_residual = (
+                fast_decay * np.asarray(state["fast_residual"], dtype=float)
+                + (1.0 - fast_decay) * instant_residual
+            )
+            fast_residual = clip_vector(
+                fast_residual, self.p.get("residual_clip_norm")
+            )
+            state["fast_residual"] = fast_residual
+
+            residual_direction = (
+                two_level_residual(slow_residual, fast_residual, mixing)
+                if self.two_level
+                else slow_residual
+            )
+            gradient = known_weight * gradient_known + residual_direction
+            gradient = clip_gradient(gradient, self.p.get("gradient_clip_norm"))
+            eta = step_size(self.p, iteration, int(state["sample_count"]))
 
             state["sample_count"] += cost
-            state["theta"] = state["theta"] - eta * gradient
-            state["residual_momentum"] = new_momentum
-            self._advance_cycle(problem, rng, state)
+            state["theta"] = theta - eta * gradient
             state["iteration"] = iteration + 1
             record(state, problem, context.evaluation_interval)
             save_step(cache, state, rng)
@@ -186,12 +216,6 @@ class GaussianPISO(_BasePISO):
     seed_alias = "GaussianPISOFamily"
 
 
-class GuidedPISO(_BasePISO):
-    name = "GuidedPISO"
-    variant = "guided"
-    seed_alias = "GuidedPISOFamily"
-
-
 class CyclePISO(_BasePISO):
     name = "CyclePISO"
     variant = "cycle"
@@ -203,13 +227,6 @@ class GaussianPISO2(_BasePISO):
     variant = "gaussian"
     two_level = True
     seed_alias = "GaussianPISOFamily"
-
-
-class GuidedPISO2(_BasePISO):
-    name = "GuidedPISO2"
-    variant = "guided"
-    two_level = True
-    seed_alias = "GuidedPISOFamily"
 
 
 class CyclePISO2(_BasePISO):

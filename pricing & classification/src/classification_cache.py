@@ -24,10 +24,8 @@ from src.cache import (
 CLASSIFICATION_RNG_SCHEME_VERSION = 1
 _PISO_METHODS = {
     "GaussianPISO",
-    "GuidedPISO",
     "CyclePISO",
     "GaussianPISO2",
-    "GuidedPISO2",
     "CyclePISO2",
 }
 

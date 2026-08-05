@@ -13,19 +13,15 @@ METHODS_TO_REMOVE=(
   "ZO_OG"
   # "ZO_OGVR"
   # "GaussianPISO"
-  # "GuidedPISO"
   # "CyclePISO"
   # "GaussianPISO2"
-  # "GuidedPISO2"
   # "CyclePISO2"
 )
 
 KNOWN_METHODS=(
   "GaussianPISO2"
-  "GuidedPISO2"
   "CyclePISO2"
   "GaussianPISO"
-  "GuidedPISO"
   "CyclePISO"
   "ZO_OGVR"
   "GZO_NS"

@@ -78,9 +78,6 @@ methods:
     known_fraction: 0.67
     batch_initial: 30
     batch_increment: 2
-  GuidedPISO:
-    <<: *piso_common
-    alpha: 0.98
   CyclePISO:
     <<: *piso_common
     cycle_length: 6
@@ -96,9 +93,6 @@ methods:
     known_fraction: 0.75
     batch_initial: 30
     batch_increment: 2
-  GuidedPISO2:
-    <<: *piso2_common
-    alpha: 0.98
   CyclePISO2:
     <<: *piso2_common
     cycle_length: 6
@@ -110,8 +104,6 @@ plotting:
     - ZO_TG
     - ZO_OGVR
     - GaussianPISO
-    - GuidedPISO
     - CyclePISO
     - GaussianPISO2
-    - GuidedPISO2
     - CyclePISO2

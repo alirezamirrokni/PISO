@@ -7,23 +7,39 @@ import numpy as np
 import pandas as pd
 
 
+plt.rcParams.update(
+    {
+        "font.size": 14.0,
+        "font.weight": "bold",
+        "axes.labelsize": 17.0,
+        "axes.labelweight": "bold",
+        "axes.titlesize": 17.0,
+        "axes.titleweight": "bold",
+        "xtick.labelsize": 13.0,
+        "ytick.labelsize": 13.0,
+        "legend.fontsize": 12.0,
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+    }
+)
+
+
 STYLES = {
-    "GZO_NS": {"color": "blue", "marker": "o"},
-    "GZO_HS": {"color": "cyan", "marker": "s"},
-    "ZO_TG": {"color": "green", "marker": "^"},
-    "ZO_OG": {"color": "red", "marker": "D"},
-    "ZO_OGVR": {"color": "black", "marker": "*"},
-    "GaussianPISO": {"color": "purple", "marker": "X"},
-    "GuidedPISO": {"color": "darkorange", "marker": "P"},
-    "CyclePISO": {"color": "magenta", "marker": "v"},
-    "GaussianPISO2": {"color": "tab:brown", "marker": "h"},
-    "GuidedPISO2": {"color": "tab:olive", "marker": ">"},
-    "CyclePISO2": {"color": "tab:pink", "marker": "<"},
+    # Shared styles: keep these identical in every experiment.
+    "GZO_NS": {"color": "blue", "marker": "o", "linestyle": "-"},
+    "GZO_HS": {"color": "cyan", "marker": "s", "linestyle": "-"},
+    "ZO_TG": {"color": "green", "marker": "^", "linestyle": "-"},
+    "ZO_OG": {"color": "red", "marker": "D", "linestyle": "-"},
+    "ZO_OGVR": {"color": "black", "marker": "*", "linestyle": "-"},
+    "GaussianPISO": {"color": "purple", "marker": "X", "linestyle": "-"},
+    "CyclePISO": {"color": "magenta", "marker": "v", "linestyle": "-"},
+    "GaussianPISO2": {"color": "tab:brown", "marker": "h", "linestyle": "-"},
+    "CyclePISO2": {"color": "tab:pink", "marker": "<", "linestyle": "-"},
 }
+
 
 DISPLAY_NAMES: dict[str, str] = {
     "GaussianPISO2": r"GaussianPISO$^2$",
-    "GuidedPISO2": r"GuidedPISO$^2$",
     "CyclePISO2": r"CyclePISO$^2$",
 }
 
@@ -461,6 +477,18 @@ def _axis_limits(
 # Plotting
 # -----------------------------------------------------------------------------
 
+
+def _format_axis(axis: object) -> None:
+    axis.xaxis.label.set_size(17.0)
+    axis.yaxis.label.set_size(17.0)
+    axis.xaxis.label.set_weight("bold")
+    axis.yaxis.label.set_weight("bold")
+    axis.title.set_size(17.0)
+    axis.title.set_weight("bold")
+    for tick in [*axis.get_xticklabels(), *axis.get_yticklabels()]:
+        tick.set_fontsize(13.0)
+        tick.set_fontweight("bold")
+
 def _plot(
     data: pd.DataFrame,
     methods: list[str],
@@ -487,7 +515,7 @@ def _plot(
     fig, axes = plt.subplots(
         nrows,
         ncols,
-        figsize=(12.8, 7.2),
+        figsize=(15.6, 9.2),
         squeeze=False,
     )
 
@@ -516,8 +544,8 @@ def _plot(
                 samples,
                 means,
                 label=DISPLAY_NAMES.get(method, method),
-                linewidth=1.35,
-                markersize=3.5,
+                linewidth=2.20,
+                markersize=5.5,
                 markevery=max(1, len(values) // 10),
                 **style,
             )
@@ -559,8 +587,9 @@ def _plot(
 
         axis.set_title(str(week))
         axis.set_xlabel("sample number")
-        axis.set_ylabel("obj")
+        axis.set_ylabel("objective")
         axis.grid(True, alpha=0.45)
+        _format_axis(axis)
 
     for axis in axes.flat[len(weeks) :]:
         axis.set_visible(False)
@@ -571,15 +600,16 @@ def _plot(
             [legend_handles[method] for method in ordered_methods],
             [DISPLAY_NAMES.get(method, method) for method in ordered_methods],
             loc="lower center",
-            bbox_to_anchor=(0.5, 0.012),
+            bbox_to_anchor=(0.5, 0.018),
             ncol=len(ordered_methods),
-            fontsize=8.0,
+            prop={"size": 12.0, "weight": "bold"},
             frameon=False,
-            handlelength=1.8,
-            columnspacing=1.2,
+            handlelength=1.25,
+            columnspacing=0.48,
+            handletextpad=0.28,
         )
 
-    fig.tight_layout(rect=(0.0, 0.075, 1.0, 1.0))
+    fig.tight_layout(rect=(0.0, 0.115, 1.0, 1.0))
     fig.savefig(png_path, dpi=300, bbox_inches="tight")
     fig.savefig(pdf_path, bbox_inches="tight")
     plt.close(fig)
