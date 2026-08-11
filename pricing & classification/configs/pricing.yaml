@@ -92,25 +92,25 @@ methods:
     batch_increment: 2
     cycle_length: 10
   GaussianPISO2:
-    radius: 0.40
+    radius: 0.4
     radius_decay: 0.96
-    step_size: 5.00e-3
-    step_decay: 1.00
-    gamma: 2.00
+    step_size: 0.005
+    step_decay: 1.0
+    gamma: 2.0
     rho: 0.92
     lambda: 0.25
-    known_fraction: 0.50
+    known_fraction: 0.5
     batch_initial: 30
     batch_increment: 2
   CyclePISO2:
-    radius: 0.40
+    radius: 0.4
     radius_decay: 0.96
-    step_size: 5.00e-3
-    step_decay: 1.00
-    gamma: 2.00
+    step_size: 0.005
+    step_decay: 1.0
+    gamma: 2.0
     rho: 0.92
     lambda: 0.25
-    known_fraction: 0.50
+    known_fraction: 0.5
     batch_initial: 30
     batch_increment: 2
     cycle_length: 10

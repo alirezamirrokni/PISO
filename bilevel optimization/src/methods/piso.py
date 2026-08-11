@@ -28,15 +28,15 @@ def _clip_norm(vector: np.ndarray, maximum: float | None) -> np.ndarray:
 
 
 class PISOBase(BaseMethod):
-    """Shared implementation for PISO and PISO^2 bilevel variants.
 
-    The known component is the exact leader partial gradient
-    ``g_K = partial_x(x, y*(x))``.  A two-point query estimates a directional
-    derivative of the full composite objective.  Subtracting the directional
-    projection of ``gamma * g_K + m_k`` produces an innovation for the unknown
-    response component, which is incorporated through a randomized Kaczmarz /
-    stochastic-approximation update.
-    """
+
+
+
+
+
+
+
+
 
     variant = "gaussian"
     two_level = False
@@ -149,8 +149,8 @@ class PISOBase(BaseMethod):
         update_clip_value = None if update_clip is None else float(update_clip)
 
         for iteration in range(iteration_start, iterations):
-            # Match PZOS oracle accounting: the central response is treated as
-            # one call, followed by the two perturbed response queries.
+            
+            
             calls += 1
             known_gradient = np.asarray(problem.partial_x(x, current_y), dtype=float)
             direction, score, mu = self._direction_and_score(

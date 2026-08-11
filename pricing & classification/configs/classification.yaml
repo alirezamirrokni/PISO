@@ -4,61 +4,62 @@ experiment:
   max_samples: 10000
   metric_samples: 0
   figure_run: 0
-  taus: [0.50, 1.00, 2.00, 4.00, 8.00]
-
+  taus:
+  - 0.5
+  - 1.0
+  - 2.0
+  - 4.0
+  - 8.0
 problem:
   data_file: data/classification/credit_processed.csv
   data_url: https://raw.githubusercontent.com/ustunb/actionable-recourse/master/examples/paper/data/credit_processed.csv
   dataset_seed: 0
   train_size: 12272
   test_size: 1000
-  initial_value: 1.00
-  reward: 2.00
+  initial_value: 1.0
+  reward: 2.0
   auto_download: true
-
-# Baseline parameters follow Appendix A.2 of Hikima et al. ZO_OGVR uses
-# beta_0 = d^(-1/2) exactly, represented symbolically to avoid a rounded constant.
 methods:
   GZO_NS:
-    mu0: 10.00
-    mu_min: 0.10
-    beta0: 1.00
+    mu0: 10.0
+    mu_min: 0.1
+    beta0: 1.0
     beta_decay: 0.95
     mu_decay: 0.95
-    alpha0: 0.00
+    alpha0: 0.0
     alpha_damping: 0.98
     batch_initial: 30
     batch_increment: 2
     guide_batch_initial: 100
     guide_batch_increment: 2
   GZO_HS:
-    mu0: 10.00
-    mu_min: 0.10
-    beta0: 1.00
+    mu0: 10.0
+    mu_min: 0.1
+    beta0: 1.0
     beta_decay: 0.95
     mu_decay: 0.95
-    alpha0: 0.00
+    alpha0: 0.0
     alpha_damping: 0.98
     batch_initial: 30
     batch_increment: 2
     window: 1
   ZO_TG:
-    mu0: 10.00
-    mu_min: 0.10
-    beta0: 1.00
+    mu0: 10.0
+    mu_min: 0.1
+    beta0: 1.0
     beta_decay: 0.95
     mu_decay: 0.95
     batch_initial: 30
     batch_increment: 2
   ZO_OG:
-    mu: 0.10
+    mu: 0.1
     beta0: 0.05
-    beta_decay: 1.00
+    beta_decay: 1.0
     batch_initial: 30
     batch_increment: 2
   ZO_OGVR:
-    mu0: 10.00
-    mu_min: 0.10
+    mu0: 10.0
+    mu_min: 0.1
     beta0: inverse_sqrt_dimension
     beta_decay: 0.95
     mu_decay: 0.95
@@ -66,44 +67,58 @@ methods:
     batch_increment: 2
     initial_samples: 20
     s_max: 10
-    M: 0.10
-
-  GaussianPISO: &piso_common
-    radius: 3.00
+    M: 0.1
+  GaussianPISO:
+    radius: 3.0
     radius_decay: 0.95
-    step_size: 0.70
+    step_size: 0.7
     step_decay: 0.98
-    gamma: 3.00
+    gamma: 3.0
     rho: 0.98
     known_fraction: 0.67
     batch_initial: 30
     batch_increment: 2
   CyclePISO:
-    <<: *piso_common
-    cycle_length: 6
-
-  GaussianPISO2: &piso2_common
-    radius: 3.00
+    radius: 3.0
     radius_decay: 0.95
-    step_size: 0.70
+    step_size: 0.7
     step_decay: 0.98
-    gamma: 3.00
+    gamma: 3.0
+    rho: 0.98
+    known_fraction: 0.67
+    batch_initial: 30
+    batch_increment: 2
+    cycle_length: 6
+  GaussianPISO2:
+    radius: 3.0
+    radius_decay: 0.95
+    step_size: 0.7
+    step_decay: 0.98
+    gamma: 3.0
     rho: 0.98
     lambda: 0.05
     known_fraction: 0.75
     batch_initial: 30
     batch_increment: 2
   CyclePISO2:
-    <<: *piso2_common
+    radius: 3.0
+    radius_decay: 0.95
+    step_size: 0.7
+    step_decay: 0.98
+    gamma: 3.0
+    rho: 0.98
+    lambda: 0.05
+    known_fraction: 0.75
+    batch_initial: 30
+    batch_increment: 2
     cycle_length: 6
-
 plotting:
   methods:
-    - GZO_NS
-    - GZO_HS
-    - ZO_TG
-    - ZO_OGVR
-    - GaussianPISO
-    - CyclePISO
-    - GaussianPISO2
-    - CyclePISO2
+  - GZO_NS
+  - GZO_HS
+  - ZO_TG
+  - ZO_OGVR
+  - GaussianPISO
+  - CyclePISO
+  - GaussianPISO2
+  - CyclePISO2

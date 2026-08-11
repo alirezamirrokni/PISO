@@ -8,7 +8,7 @@ class Tabular:
         self.pi = pi
 
     def _get_probs(self, state_id):
-        """ """
+
         probs = self.pi[state_id]
 
         assert_almost_equal(np.sum(probs), 1)

@@ -39,15 +39,15 @@ def _zo_ogvr_baseline(
     distance_weight: float,
     window: int,
 ) -> float:
-    """Estimate the one-point variance-reduction parameter from past samples.
 
-    This is the finite-window version of Algorithm 1 in Hikima and Takeda
-    (AAAI 2025).  In this RL benchmark the stochastic sample ``xi`` is a
-    complete trajectory and ``f(theta, xi)`` is its negative discounted
-    return.  Once a trajectory is sampled, that realized loss is independent
-    of the argument ``theta``; therefore the past loss values can be reused
-    directly without new environment trajectories or cross-deployment access.
-    """
+
+
+
+
+
+
+
+
 
     if int(window) <= 0:
         raise ValueError("ZO_OGVR history_window must be positive")
@@ -80,7 +80,7 @@ def _zo_ogvr_baseline(
 
 
 class VanillaPG:
-    """Classical REINFORCE using only the known gradient component g_K."""
+
 
     name = "VanillaPG"
     seed_alias = "VanillaPG"
@@ -220,15 +220,15 @@ class ZOOG:
 
 
 class ZOOGVR:
-    """One-point ZO with the history-weighted variance-reduction parameter.
 
-    The estimator is
 
-        ((mean(loss(theta + mu*u)) - c_k) / mu) * u,
 
-    where ``c_k`` is reconstructed from the most recent one-point deployment
-    batches using the distance-aware weights of Hikima and Takeda (2025).
-    """
+
+
+
+
+
+
 
     name = "ZO_OGVR"
     seed_alias = "ZO_OGVR"
@@ -262,9 +262,9 @@ class ZOOGVR:
         state.setdefault("vr_baseline", None)
         state.setdefault("vr_history", [])
 
-        # Algorithm 1 receives c_0 as an input.  Estimate it once from an
-        # ordinary deployment at theta_0 and charge those trajectories to the
-        # same cumulative sample budget used by every other method.
+        
+        
+        
         if state["vr_baseline"] is None:
             initial_count = int(
                 self.p.get("initial_baseline_batch", self.p["batch_initial"])

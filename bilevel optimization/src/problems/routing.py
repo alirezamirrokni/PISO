@@ -60,11 +60,11 @@ class RoutingInstance:
             outgoing.sort(key=lambda item: (item[0], item[1]))
         self._adjacency = adjacency
 
-        # The paper permits unconstrained tolls.  Negative perturbed tolls can
-        # therefore produce negative edge costs.  A directed acyclic graph is a
-        # clean way to keep shortest paths well-defined without clipping tolls
-        # or changing the ZOS/PZOS updates.  The paper does not specify its graph
-        # generator, so this is an explicit independent-reproduction choice.
+        
+        
+        
+        
+        
         queue = [node for node in range(self.n_nodes) if indegree[node] == 0]
         heapq.heapify(queue)
         topological_order: list[int] = []
@@ -88,7 +88,7 @@ class RoutingInstance:
         return np.zeros(self.dimension, dtype=float)
 
     def project(self, x: np.ndarray) -> np.ndarray:
-        # Figures 2 and 3 use the unconstrained toll problem tau in R^|E|.
+        
         return np.asarray(x, dtype=float)
 
     def objective(self, x: np.ndarray, y: np.ndarray) -> float:
@@ -104,11 +104,11 @@ class RoutingInstance:
         return np.asarray(x, dtype=float).copy()
 
     def _shortest_path_edges(self, weights: np.ndarray, source: int, target: int) -> list[int]:
-        """Return a minimum-cost path in the generated DAG.
 
-        Topological dynamic programming is valid for arbitrary real edge
-        weights, so negative toll perturbations cannot create predecessor cycles.
-        """
+
+
+
+
 
         weights = np.asarray(weights, dtype=float)
         if weights.shape != (self.dimension,):
@@ -133,8 +133,8 @@ class RoutingInstance:
                 continue
             for v, edge in self._adjacency[u]:
                 candidate = distance[u] + float(weights[edge])
-                # Deterministic tie handling keeps paired ZOS/PZOS evaluations
-                # reproducible on Windows and Unix.
+                
+                
                 if candidate < distance[v] - 1.0e-14:
                     distance[v] = candidate
                     previous_edge[v] = edge
@@ -154,7 +154,7 @@ class RoutingInstance:
             path.append(edge)
             node = int(self.tails[edge])
 
-        # This is unreachable for a DAG and is kept as a defensive assertion.
+        
         raise RuntimeError("path reconstruction exceeded the number of graph nodes")
 
     def _all_or_nothing(self, toll: np.ndarray, aggregate_flow: np.ndarray) -> np.ndarray:
@@ -219,15 +219,15 @@ class RoutingInstance:
 
 
 def generate_routing_instances(config: dict, seed: int) -> list[RoutingInstance]:
-    """Generate deterministic heterogeneous routing instances.
 
-    The paper specifies the size and parameter ranges but not the random graph
-    construction.  We generate directed acyclic graphs.  A random Hamiltonian
-    path guarantees connectivity for every sampled OD pair, and extra edges are
-    sampled only in the forward topological direction.  This preserves the
-    paper's unconstrained toll domain while keeping shortest paths well-defined
-    even when finite-difference queries contain negative toll components.
-    """
+
+
+
+
+
+
+
+
 
     exp = config["experiment"]
     problem = config["problem"]
@@ -243,7 +243,7 @@ def generate_routing_instances(config: dict, seed: int) -> list[RoutingInstance]
             )
         )
 
-        # A DAG on n vertices has at most n(n-1)/2 directed edges.
+        
         maximum_edges = min(
             int(problem["edges_max"]),
             n_nodes * (n_nodes - 1) // 2,
@@ -256,7 +256,7 @@ def generate_routing_instances(config: dict, seed: int) -> list[RoutingInstance]
 
         permutation = np.asarray(rng.permutation(n_nodes), dtype=np.int64)
 
-        # Backbone: every earlier topological position can reach every later one.
+        
         edge_set: set[tuple[int, int]] = {
             (int(permutation[index]), int(permutation[index + 1]))
             for index in range(n_nodes - 1)
@@ -287,8 +287,8 @@ def generate_routing_instances(config: dict, seed: int) -> list[RoutingInstance]
             )
         )
 
-        # Sample OD pairs in topological order.  The backbone then guarantees at
-        # least one directed path for every group.
+        
+        
         origin_positions = rng.integers(0, n_nodes - 1, size=n_groups)
         destination_positions = np.asarray(
             [rng.integers(int(position) + 1, n_nodes) for position in origin_positions],

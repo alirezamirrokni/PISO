@@ -7,13 +7,13 @@ import numpy as np
 
 @dataclass(frozen=True)
 class OracleModel:
-    """Exact differentiable performative model for the PePG gridworld.
 
-    All arrays are evaluated at one policy parameter vector ``theta``.  The
-    Jacobians are with respect to the policy parameters and therefore expose
-    information unavailable to the model-free methods.  This is intentionally
-    an oracle/privileged baseline.
-    """
+
+
+
+
+
+
 
     policy: np.ndarray
     follower_policy: np.ndarray
@@ -48,13 +48,13 @@ def _follower_q_jacobian(
     response_tolerance: float,
     tie_tolerance: float,
 ) -> tuple[np.ndarray, np.ndarray, float]:
-    """Differentiate the follower Bellman optimality equations.
 
-    The follower computes a hard Bellman maximum and then applies a Boltzmann
-    softmax to the resulting Q values.  Away from ties, the Bellman maximum is
-    piecewise differentiable.  We differentiate the active greedy branch via
-    the corresponding linear fixed-point system.
-    """
+
+
+
+
+
+
 
     env = problem.env
     q_value = env._best_response_q_vectorized(
@@ -109,7 +109,7 @@ def _follower_q_jacobian(
                     * principal_policy[state, action]
                 )
 
-    # The terminal row remains zero, so its derivative is fixed at zero.
+    
     value_jacobian = np.linalg.solve(
         np.eye(num_states, dtype=np.float64) - transition_matrix,
         rhs,
@@ -152,7 +152,7 @@ def build_oracle_model(
     response_tolerance: float = 1e-5,
     tie_tolerance: float = 1e-10,
 ) -> OracleModel:
-    """Build exact R(theta), P(theta), and their parameter Jacobians."""
+
 
     theta = problem._validate_theta(theta)
     env = problem.env
@@ -271,12 +271,12 @@ def exact_oracle_gradient(
     response_tolerance: float = 1e-5,
     tie_tolerance: float = 1e-10,
 ) -> np.ndarray:
-    """Compute the full exact gradient of the performative value.
 
-    This function is used for validation tests and diagnostics, not by the
-    training algorithm.  OraclePePG still estimates its gradient from the same
-    number of real trajectories specified in the experiment config.
-    """
+
+
+
+
+
 
     model = build_oracle_model(
         problem,

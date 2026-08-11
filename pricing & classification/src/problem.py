@@ -28,8 +28,8 @@ class ProblemSpec:
 class PricingProblem:
     def __init__(self, theta: np.ndarray, rho: np.ndarray, spec: ProblemSpec) -> None:
         self.spec = spec
-        self.n = spec.products
-        self.m = spec.buyers
+        self.n = int(spec.products)
+        self.m = int(spec.buyers)
         self.theta = np.asarray(theta, dtype=float).reshape(self.n)
         self.rho = np.asarray(rho, dtype=float).reshape(self.n)
         self.gamma = 2.0 * np.pi / (np.sqrt(6.0) * self.theta)
@@ -43,10 +43,7 @@ class PricingProblem:
 
     @staticmethod
     def _week_theta(data_dir: Path, week_id: str, spec: ProblemSpec) -> np.ndarray:
-        raw = np.loadtxt(
-            data_dir / "prices" / f"2022_{week_id}.csv",
-            encoding="utf-8-sig",
-        )
+        raw = np.loadtxt(data_dir / "prices" / f"2022_{week_id}.csv", encoding="utf-8-sig")
         theta = raw[: spec.products].astype(float)
         theta /= theta.max()
         return theta
@@ -58,7 +55,7 @@ class PricingProblem:
         week_id: str,
         rng: np.random.RandomState,
         spec: ProblemSpec,
-    ):
+    ) -> "PricingProblem":
         theta = cls._week_theta(data_dir, week_id, spec)
         rho = spec.rho_low + (spec.rho_high - spec.rho_low) * rng.rand(spec.products)
         return cls(theta, rho, spec)
@@ -70,35 +67,55 @@ class PricingProblem:
         week_id: str,
         rho: np.ndarray,
         spec: ProblemSpec,
-    ):
+    ) -> "PricingProblem":
         return cls(cls._week_theta(data_dir, week_id, spec), rho, spec)
 
     @property
     def initial_x(self) -> np.ndarray:
         return np.full(self.n, self.spec.initial_price, dtype=float)
 
-    def sample_demands(self, x: np.ndarray, count: int, rng: np.random.RandomState) -> np.ndarray:
+    def _choice_probabilities(self, x: np.ndarray) -> np.ndarray:
         utility = self.gamma * (self.theta - np.asarray(x).reshape(self.n))
-        exp_value = np.exp(utility)
-        cumulative = np.cumsum(exp_value / (self.outside_weight + exp_value.sum()))
-        choices = np.searchsorted(cumulative, rng.rand(count, self.m))
+        exp_value = np.exp(np.clip(utility, -700.0, 700.0))
+        return exp_value / (self.outside_weight + exp_value.sum())
+
+    def demands_from_uniforms(self, x: np.ndarray, uniforms: np.ndarray) -> np.ndarray:
+        uniforms = np.asarray(uniforms, dtype=float)
+        if uniforms.ndim != 2 or uniforms.shape[1] != self.m:
+            raise ValueError(f"uniforms must have shape (count, {self.m}), got {uniforms.shape}")
+        cumulative = np.cumsum(self._choice_probabilities(x))
+        choices = np.searchsorted(cumulative, uniforms)
         categories = np.arange(self.n + 1)
         return (choices[:, :, None] == categories).sum(axis=1).astype(np.int64)
+
+    def sample_demands(self, x: np.ndarray, count: int, rng: np.random.RandomState) -> np.ndarray:
+        if int(count) <= 0:
+            raise ValueError("sample count must be positive")
+        return self.demands_from_uniforms(x, rng.rand(int(count), self.m))
 
     def loss_from_demands(self, x: np.ndarray, demands: np.ndarray) -> np.ndarray:
         sold = np.asarray(demands)[:, : self.n].astype(float, copy=False)
         low = self.slope_low * sold
         middle = self.slope_middle * (sold - self.lower) + self.slope_low * self.lower
-        high = (
-            self.slope_high * (sold - self.upper)
-            + self.slope_middle * (self.upper - self.lower)
-            + self.slope_low * self.lower
-        )
+        high = self.slope_high * (sold - self.upper) + self.slope_middle * (self.upper - self.lower) + self.slope_low * self.lower
         costs = np.where(sold < self.lower, low, np.where(sold < self.upper, middle, high))
         return -(sold @ np.asarray(x).reshape(self.n)) + costs.sum(axis=1)
 
-    def sample_losses(self, x: np.ndarray, count: int, rng: np.random.RandomState):
+    def sample_losses(
+        self,
+        x: np.ndarray,
+        count: int,
+        rng: np.random.RandomState,
+    ) -> tuple[np.ndarray, np.ndarray]:
         demands = self.sample_demands(x, count, rng)
+        return self.loss_from_demands(x, demands), demands
+
+    def losses_from_uniforms(
+        self,
+        x: np.ndarray,
+        uniforms: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        demands = self.demands_from_uniforms(x, uniforms)
         return self.loss_from_demands(x, demands), demands
 
     def evaluate(self, x: np.ndarray, count: int, rng: np.random.RandomState) -> float:

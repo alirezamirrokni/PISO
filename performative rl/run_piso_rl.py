@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from src.piso_rl.runner import run_experiment
 
@@ -23,7 +24,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--config",
-        default="configs/piso_rl.yaml",
+        default=str(Path(__file__).resolve().parent / "configs" / "piso_rl.yaml"),
         help="YAML experiment configuration.",
     )
     parser.add_argument(

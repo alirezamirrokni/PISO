@@ -11,7 +11,7 @@ class SoftMaxQ_Policy:
         self.beta = beta
 
     def _get_probs(self, state_id):
-        """ """
+
         beta = self.beta
 
         total = np.sum(

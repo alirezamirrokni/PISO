@@ -126,9 +126,9 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
     )
     progress = ExperimentProgress(total_pairs, simulations, context.max_samples)
     try:
-        # The released baseline order is preserved: week -> simulation -> method.
-        # Stable problem-instance checkpoints prevent a changed method from
-        # altering later problem instances. PISO variants use private RNGs.
+        
+        
+        
         for week_value in experiment["weeks"]:
             week_id = str(week_value).zfill(2)
             for run_index in range(simulations):

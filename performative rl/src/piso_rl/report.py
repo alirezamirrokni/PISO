@@ -46,9 +46,9 @@ DISPLAY_NAMES = {
 }
 
 
-# Shared methods use exactly the same colors, markers, and line styles as the
-# pricing/classification and bilevel figures. PePG and Vanilla PG use the two
-# fixed experiment-exclusive styles used across the paper.
+
+
+
 STYLES = {
     "GZO_NS": {"color": "blue", "marker": "o", "linestyle": "-"},
     "GZO_HS": {"color": "cyan", "marker": "s", "linestyle": "-"},
@@ -83,12 +83,12 @@ def _statistics(values: list[float]) -> tuple[float, float, float, int]:
 
 
 def _moving_average(values: np.ndarray, window: int) -> np.ndarray:
-    """Causal rolling mean that never uses future evaluation points.
 
-    The previous centered smoother leaked post-update values into the point at
-    budget zero. That could make fast-changing methods look as though they
-    started from a different initial policy.
-    """
+
+
+
+
+
     values = np.asarray(values, dtype=float)
     if window <= 1 or values.size <= 1:
         return values.copy()
@@ -106,14 +106,14 @@ def _bootstrap_mean_interval(
     seed: int,
     resamples: int = 4000,
 ) -> tuple[float, float]:
-    """Deterministic percentile-bootstrap CI for a sample mean.
 
-    Occupancy shifts are nonnegative and strongly skewed.  A Gaussian
-    mean-plus/minus-SE interval can cross zero; clipping that interval to zero
-    and then drawing it on a logarithmic axis creates an artificial band down
-    to 1e-8.  The bootstrap interval respects the empirical support and avoids
-    that plotting artifact without shrinking genuine between-seed variation.
-    """
+
+
+
+
+
+
+
     array = np.asarray(values, dtype=float)
     if array.size == 0:
         return float("nan"), float("nan")
@@ -229,8 +229,8 @@ def build_reports(traces: list, config: dict, output_dir: str | Path) -> None:
             values["improvement"]
         )
         change_mean, change_sd, change_se, change_n = _statistics(values["change"])
-        # Use a support-respecting bootstrap interval for the nonnegative,
-        # highly skewed occupancy-shift statistic.
+        
+        
         bootstrap_seed = sum(
             (index + 1) * ord(character)
             for index, character in enumerate(f"{method}:{samples}")
@@ -323,10 +323,10 @@ def build_reports(traces: list, config: dict, output_dir: str | Path) -> None:
         summary_rows,
     )
 
-    # Independent-run differences in final improvement.  The fixed benchmark
-    # has no between-seed problem variation, so these intervals quantify only
-    # stochastic optimizer variation.  PePG and the exact oracle are reported
-    # as separate references because they have stronger information access.
+    
+    
+    
+    
     def write_reference_comparison(reference_method: str, filename: str) -> None:
         reference = next(
             (row for row in summary_rows if row["method"] == reference_method),
@@ -539,7 +539,7 @@ def _legend(
     *,
     y: float,
 ) -> None:
-    """Draw the paper legend as one compact row close to the axes."""
+
     if not handles:
         return
     figure.legend(
@@ -578,8 +578,8 @@ def _plot(
     if plotting_methods is None:
         methods = available_methods
     else:
-        # The configuration controls both selection and legend order. During
-        # grouped/partial runs, methods that do not yet have rows are skipped.
+        
+        
         methods = [
             method for method in plotting_methods if method in available_methods
         ]
@@ -589,8 +589,8 @@ def _plot(
             "none of report.plotting_methods are present in figure_data.csv"
         )
 
-    # Two panels need enough horizontal room for a single-row legend, but the
-    # canvas stays compact enough for a two-column paper figure.
+    
+    
     fig, axes = plt.subplots(1, 2, figsize=(16.8, 6.6))
     return_axis, stability_axis = axes
 
@@ -629,8 +629,8 @@ def _plot(
         marker = style.get("marker")
         markevery = max(1, int(math.ceil(len(iterations) / 10))) if marker else None
 
-        # Raw means are available only as an explicit debugging layer. Keeping
-        # them off by default avoids the thin hollow duplicate-line artifact.
+        
+        
         if show_raw_curves:
             return_axis.plot(
                 iterations,
@@ -712,8 +712,8 @@ def _plot(
     fig.savefig(output / "figure.pdf", bbox_inches="tight")
     plt.close(fig)
 
-    # Keep an unsmoothed absolute-return figure for auditability, with the same
-    # paper typography, styles, and one-row legend.
+    
+    
     absolute_fig, absolute_axis = plt.subplots(figsize=(16.8, 6.4))
     for method in methods:
         selected = sorted(

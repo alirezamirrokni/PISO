@@ -105,8 +105,8 @@ def run_experiment(
     )
     progress = ExperimentProgress(pair_count, simulations, context.max_samples)
     try:
-        # Match the pricing runner's cache-safe RNG semantics: baselines share the
-        # released sequential stream; PISO variants use deterministic private streams.
+        
+        
         for tau in taus:
             for run_index in range(simulations):
                 problem = StrategicClassificationProblem(dataset, tau, spec)

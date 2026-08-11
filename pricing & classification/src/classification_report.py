@@ -186,9 +186,9 @@ def _plot(
 ) -> None:
     taus = sorted(aggregate["tau"].unique())
     if len(taus) == 5:
-        # Three equally sized panels on the first row and two centered panels on
-        # the second row. A six-column GridSpec gives every panel width two while
-        # leaving one column of symmetric whitespace on each side of row two.
+        
+        
+        
         figure = plt.figure(figsize=(17.2, 9.4))
         grid = figure.add_gridspec(2, 6)
         axes_list = [
@@ -212,7 +212,7 @@ def _plot(
     handles: dict[str, object] = {}
     for axis, tau in zip(axes_list, taus, strict=False):
         frame = aggregate[aggregate["tau"] == tau]
-        # Draw uncertainty first so every mean line remains visible.
+        
         for method in methods:
             values = frame[frame["method"] == method].sort_values("samples")
             if values.empty:

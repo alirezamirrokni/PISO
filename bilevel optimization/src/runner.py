@@ -21,12 +21,12 @@ from src.report import write_outputs
 
 try:
     from tqdm.auto import tqdm as _tqdm
-except ImportError:  # The file remains usable even when tqdm is not installed.
+except ImportError:  
     _tqdm = None
 
 
 class _FallbackProgress:
-    """Small dependency-free progress bar used when tqdm is unavailable."""
+
 
     def __init__(self, total: int, desc: str, unit: str = "run") -> None:
         self.total = max(int(total), 0)
@@ -107,12 +107,12 @@ def _family_components(family: str):
 def _run_one_method(
     task: tuple[str, dict[str, Any], str, int, str],
 ) -> tuple[int, str, bool]:
-    """Run one method on one problem instance.
 
-    Returns ``(instance_id, method_name, loaded_from_complete_cache)``.
-    Splitting work at method-instance granularity gives a useful progress bar and
-    preserves the existing per-method in-flight checkpoint files.
-    """
+
+
+
+
+
 
     family, config, output_text, instance_id, method_name = task
     output_dir = Path(output_text)
@@ -268,7 +268,11 @@ def run_experiment(
             f"config family is {configured_family!r}, but --problem is {family!r}"
         )
 
-    output_dir = (output_override or Path(config["output_dir"])).expanduser().resolve()
+    output_candidate = (output_override or Path(config["output_dir"])).expanduser()
+    if output_candidate.is_absolute():
+        output_dir = output_candidate.resolve()
+    else:
+        output_dir = (Path(__file__).resolve().parents[2] / output_candidate).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     cache = CacheManager(output_dir, family, config)
     if reset_cache:

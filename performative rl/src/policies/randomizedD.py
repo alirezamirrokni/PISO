@@ -8,7 +8,7 @@ class RandomizedD_Policy:
         self.d_star = d_star
 
     def _get_probs(self, state_id):
-        """ """
+
         if not any(self.d_star[state_id]):
             probs = [1 / len(self.actions)] * len(self.actions)
             return probs

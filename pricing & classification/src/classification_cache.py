@@ -55,16 +55,16 @@ def _hash_classification_problem_compat(
     project_root: Path,
     path: Path,
 ) -> None:
-    """Hash the NumPy-only implementation as its cache-compatible predecessor.
 
-    The current implementation removes a broken scikit-learn dependency while
-    preserving StandardScaler, accuracy, and binary ROC-AUC semantics. Rebuilding
-    the previous source text here keeps existing classification method caches valid.
-    """
+
+
+
+
+
     content = path.read_text(encoding="utf-8")
-    # Final train accuracy is a reporting-only addition computed from final_x.
-    # Reconstruct the previous metrics implementation before hashing so existing
-    # completed method caches remain reusable without changing any optimizer run.
+    
+    
+    
     content = content.replace(
         "train_loss, _, train_predictions = self._split_metrics(",
         "train_loss, _, _ = self._split_metrics(",
@@ -180,11 +180,11 @@ def build_classification_method_fingerprint(
 
 
 class ClassificationCacheManager:
-    """One checkpoint CSV per cost parameter and method.
 
-    This is separate from the pricing cache implementation, so adding the
-    classification experiment cannot change pricing filenames or fingerprints.
-    """
+
+
+
+
 
     def __init__(
         self,

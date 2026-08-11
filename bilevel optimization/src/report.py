@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 
-# Paper-ready typography shared by every bilevel figure.
+
 plt.rcParams.update(
     {
         "font.size": 14.0,
@@ -32,7 +32,7 @@ from src.methods.common import MethodTrace
 
 
 DEFAULT_STYLES: dict[str, dict[str, Any]] = {
-    # Shared styles: identical to pricing/classification and performative RL.
+    
     "GZO_NS": {"color": "blue", "marker": "o", "linestyle": "-", "linewidth": 2.20, "label": "GZO-NS"},
     "GZO_HS": {"color": "cyan", "marker": "s", "linestyle": "-", "linewidth": 2.20, "label": "GZO-HS"},
     "ZO_TG": {"color": "green", "marker": "^", "linestyle": "-", "linewidth": 2.20, "label": "ZO-TG"},
@@ -42,8 +42,8 @@ DEFAULT_STYLES: dict[str, dict[str, Any]] = {
     "CyclePISO": {"color": "magenta", "marker": "v", "linestyle": "-", "linewidth": 2.20, "label": "CyclePISO"},
     "GaussianPISO2": {"color": "tab:brown", "marker": "h", "linestyle": "-", "linewidth": 2.20, "label": "GaussianPISO²"},
     "CyclePISO2": {"color": "tab:pink", "marker": "<", "linestyle": "-", "linewidth": 2.20, "label": "CyclePISO²"},
-    # Two fixed experiment-exclusive styles. PZOS shares style A with PePG;
-    # ZOS shares style B with Vanilla PG.
+    
+    
     "PZOS": {"color": "darkorange", "marker": "P", "linestyle": "-", "linewidth": 2.35, "label": "PZOS"},
     "ZOS": {"color": "tab:olive", "marker": ">", "linestyle": "--", "linewidth": 2.35, "label": "ZOS"},
 }
@@ -65,7 +65,7 @@ def _legend_below(
     *,
     fontsize: float = 12.5,
 ) -> float:
-    """Place one de-duplicated, single-row legend below the figure."""
+
     axes_array = np.atleast_1d(axes).ravel()
     handles: list[Any] = []
     labels: list[str] = []
@@ -90,10 +90,10 @@ def _legend_below(
         handletextpad=0.28,
         borderaxespad=0.0,
     )
-    # Reserve a nearly constant physical distance below the axes instead of a
-    # fixed fraction of the figure height.  This keeps the legend close on the
-    # tall routing comparison figures while still preventing clipping on the
-    # trajectory and dimension plots.
+    
+    
+    
+    
     return max(0.050, min(0.120, 0.58 / float(fig.get_figheight())))
 
 
@@ -104,7 +104,7 @@ def _format_axis(
     tick_size: float = 14.0,
     title_size: float = 18.0,
 ) -> None:
-    """Apply readable, restrained paper typography to one axis."""
+
     axis.xaxis.label.set_size(label_size)
     axis.yaxis.label.set_size(label_size)
     axis.xaxis.label.set_weight("bold")
@@ -329,7 +329,7 @@ def _plot_routing_pairwise(
         wspace=0.24,
     )
     if image is not None:
-        # A dedicated colorbar axis keeps the guide clear of the rightmost panels.
+        
         colorbar_axis = fig.add_axes([0.900, bottom + 0.060, 0.020, 0.80 - bottom])
         colorbar = fig.colorbar(image, cax=colorbar_axis)
         colorbar.set_label(
@@ -459,9 +459,13 @@ def write_outputs(
         for method in plotting.get("methods", list(config["methods"]))
         if method in available
     ]
-    normalization_methods = list(
-        plotting.get("normalization_methods", ["ZOS", "PZOS"])
-    )
+    normalization_methods = [
+        method
+        for method in plotting.get("normalization_methods", ["ZOS", "PZOS"])
+        if method in available
+    ]
+    if not normalization_methods:
+        normalization_methods = list(methods)
     normalized = _normalize_per_instance(raw, normalization_methods)
     normalized.to_csv(output_dir / "normalized_runs.csv", index=False)
 
@@ -486,19 +490,22 @@ def write_outputs(
             int(value)
             for value in plotting.get("scatter_iterations", [10, 25, 50])
         ]
-        pairwise_methods = [
-            method
-            for method in plotting.get(
-                "pairwise_methods",
-                [
-                    "GaussianPISO",
-                    "CyclePISO",
-                    "GaussianPISO2",
-                    "CyclePISO2",
-                ],
-            )
-            if method in available
-        ]
+        pairwise_references = {"PZOS", "ZOS", "GZO_NS", "GZO_HS"}
+        pairwise_methods = []
+        if pairwise_references.issubset(available):
+            pairwise_methods = [
+                method
+                for method in plotting.get(
+                    "pairwise_methods",
+                    [
+                        "GaussianPISO",
+                        "CyclePISO",
+                        "GaussianPISO2",
+                        "CyclePISO2",
+                    ],
+                )
+                if method in available
+            ]
         for method in pairwise_methods:
             stem = output_dir / f"routing_{_slug(method)}_pairwise_comparison"
             data = _plot_routing_pairwise(

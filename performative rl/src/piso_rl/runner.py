@@ -113,7 +113,11 @@ def run_experiment(
 ) -> list:
     config = load_config(config_path)
     experiment = config["experiment"]
-    output = Path(output_dir or experiment.get("output_dir", "results/piso_rl"))
+    output_candidate = Path(output_dir or experiment.get("output_dir", "results/piso_v4_heldout")).expanduser()
+    if output_candidate.is_absolute():
+        output = output_candidate.resolve()
+    else:
+        output = (Path(__file__).resolve().parents[3] / output_candidate).resolve()
     cache_root = output / "cache"
     output.mkdir(parents=True, exist_ok=True)
 
@@ -156,7 +160,7 @@ def run_experiment(
     master_seed = int(experiment.get("master_seed", 2026))
     n_jobs = int(jobs if jobs is not None else experiment.get("n_jobs", 1))
 
-    # Persist the effective run configuration, including CLI overrides.
+    
     experiment["seeds"] = list(run_seeds)
     experiment.setdefault("problem_seed", 0)
     experiment.setdefault("vary_problem_by_seed", False)
@@ -169,7 +173,7 @@ def run_experiment(
     if n_jobs <= 0:
         raise ValueError("number of jobs must be positive")
     if n_jobs > 1:
-        # Prevent each process from starting its own large BLAS thread pool.
+        
         for variable in (
             "OMP_NUM_THREADS",
             "OPENBLAS_NUM_THREADS",
@@ -208,7 +212,7 @@ def run_experiment(
             )
             progress.update(1)
     else:
-        # Spawn avoids inherited mutable NumPy/environment state across workers.
+        
         process_context = mp.get_context("spawn")
         with ProcessPoolExecutor(
             max_workers=n_jobs,

@@ -41,7 +41,7 @@ def _warm_from_pair(
 
 
 class ZerothOrderBase(BaseMethod):
-    """Common schedules and checkpoint helpers for ZO/GZO baselines."""
+
 
     def radius(self, iteration: int) -> float:
         radius = float(self.params.get("radius", self.params.get("mu", 0.10)))
@@ -87,13 +87,13 @@ class ZerothOrderBase(BaseMethod):
 
 
 class ZOTG(ZerothOrderBase):
-    """Gaussian two-point zeroth-order gradient baseline.
 
-    This is the ZO-TG baseline used in the guided-ZO experiments.  ``ZOS`` is
-    intentionally retained separately because it is the unit-sphere,
-    dimension-scaled baseline from the PZOS paper and its old caches must stay
-    valid.
-    """
+
+
+
+
+
+
 
     name = "ZO_TG"
 
@@ -133,8 +133,8 @@ class ZOTG(ZerothOrderBase):
                 "zo-tg-direction",
                 dimension,
             )
-            # Keep the expected perturbation norm approximately equal to
-            # ``radius``, independently of the outer dimension.
+            
+            
             mu = self.radius(iteration) / np.sqrt(float(dimension))
             plus_x = x + mu * direction
             minus_x = x - mu * direction
@@ -177,7 +177,7 @@ class ZOTG(ZerothOrderBase):
 
 
 class ZOOG(ZerothOrderBase):
-    """Classical Gaussian one-point zeroth-order estimator."""
+
 
     name = "ZO_OG"
 
@@ -251,14 +251,14 @@ class ZOOG(ZerothOrderBase):
 
 
 class ZOOGVR(ZerothOrderBase):
-    """One-point ZO with a history-weighted variance-reduction baseline.
 
-    A historical follower response queried at ``q_i`` plays the role of a
-    sample from the decision-dependent distribution.  Because the leader's
-    objective ``f(x, y)`` is known, it can be re-evaluated at the current
-    leader decision using the stored response without an additional follower
-    query.
-    """
+
+
+
+
+
+
+
 
     name = "ZO_OGVR"
 
@@ -280,7 +280,7 @@ class ZOOGVR(ZerothOrderBase):
             query_history = [np.asarray(x, dtype=float).copy()]
             response_history = [np.asarray(current_y, dtype=float).copy()]
             objectives = [baseline]
-            # The initial central response is used to construct c_0.
+            
             oracle_calls = [1]
             iteration_start = 0
             calls = 1
@@ -371,7 +371,7 @@ class ZOOGVR(ZerothOrderBase):
 
 
 class GuidedZerothOrderBase(ZerothOrderBase):
-    """Shared raw-direction implementation of GZO-NS and GZO-HS."""
+
 
     def guided_direction(
         self,
@@ -388,9 +388,9 @@ class GuidedZerothOrderBase(ZerothOrderBase):
         )
         normalized_guide = _normalized(guide)
         if float(np.linalg.norm(normalized_guide)) <= 1.0e-15:
-            # GZO-HS has no historical guide at its first iteration.  An
-            # isotropic unit-trace query avoids the zero direction that would
-            # result from alpha_0 = 0 and an empty history.
+            
+            
+            
             return rng.normal(size=dimension) / np.sqrt(float(dimension))
         return (
             np.sqrt(alpha / float(dimension)) * rng.normal(size=dimension)
@@ -405,7 +405,7 @@ class GuidedZerothOrderBase(ZerothOrderBase):
 
 
 class GZONS(GuidedZerothOrderBase):
-    """Guided ZO with a fresh current-response guide (GZO-NS)."""
+
 
     name = "GZO_NS"
 
@@ -439,7 +439,7 @@ class GZONS(GuidedZerothOrderBase):
             calls = int(restored["calls"])
 
         for iteration in range(iteration_start, iterations):
-            # Fresh guide access: y*(x_t) plus two perturbed follower queries.
+            
             calls += 1
             guide = np.asarray(problem.partial_x(x, current_y), dtype=float)
             direction = self.guided_direction(
@@ -461,8 +461,8 @@ class GZONS(GuidedZerothOrderBase):
                 problem.objective(plus_x, plus_y)
                 - problem.objective(minus_x, minus_y)
             ) / (2.0 * mu)
-            # Published GZO uses the covariance-shaped direction itself; no
-            # inverse-covariance multiplication is applied here.
+            
+            
             gradient = float(derivative) * direction
             x = self.apply_update(problem, x, gradient, iteration)
             alpha = self.next_alpha(alpha)
@@ -497,7 +497,7 @@ class GZONS(GuidedZerothOrderBase):
 
 
 class GZOHS(GuidedZerothOrderBase):
-    """Guided ZO whose guide is reconstructed from historical responses."""
+
 
     name = "GZO_HS"
 

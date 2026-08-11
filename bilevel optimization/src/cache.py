@@ -14,7 +14,7 @@ INSTANCE_SCHEMA = 1
 
 
 def _source_hash(*objects: object) -> str:
-    """Hash complete source modules, not only individual class bodies."""
+
     digest = hashlib.sha256()
     seen: set[str] = set()
     for object_ in objects:
@@ -30,9 +30,9 @@ def _source_hash(*objects: object) -> str:
         digest.update(inspect.getsource(object_).encode("utf-8"))
     return digest.hexdigest()
 
-# Removing the unused guided variants does not change the implementation of the
-# four retained PISO classes.  Keep their prior module fingerprint so existing
-# completed/in-flight caches remain reusable after this source cleanup.
+
+
+
 _RETAINED_PISO_METHODS = {
     "GaussianPISO",
     "CyclePISO",

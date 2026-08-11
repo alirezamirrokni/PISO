@@ -19,21 +19,21 @@ from .common import (
 
 
 class PePG:
-    """Trajectory PePG with exact response derivatives.
 
-    This implements a likelihood-ratio estimator that is numerically
-    consistent with the exact gradient of this project's objective.  At time
-    ``t`` the policy-score term uses ``gamma**t A(s_t,a_t)``; the response
-    transition term uses ``gamma**(t+1) V(s_{t+1}) grad log P``; and the direct
-    reward-response Jacobian uses ``gamma**t``.  Its Monte-Carlo mean is tested
-    against the exact finite-difference-validated gradient.
 
-    The method is privileged because it receives exact reward and transition
-    Jacobians (and, here, the exact tabular advantage to avoid conflating a
-    critic-fitting error with the gradient theorem).  Unlike ``OraclePePG``, it
-    still estimates the expectation from real trajectories and is therefore a
-    sample-budget method rather than a deterministic upper-information oracle.
-    """
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     name = "PePG"
     seed_alias = "PePG"

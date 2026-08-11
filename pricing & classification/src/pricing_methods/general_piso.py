@@ -6,7 +6,7 @@ import numpy as np
 
 
 def validate_common_params(params: dict[str, Any], method_name: str) -> None:
-    """Validate the compact PISO configuration shared by all variants."""
+
     positive = ("radius", "step_size", "gamma", "batch_initial")
     for key in positive:
         value = float(params[key])
@@ -31,17 +31,17 @@ def validate_common_params(params: dict[str, Any], method_name: str) -> None:
 
 
 def step_size(params: dict[str, Any], iteration: int) -> float:
-    """Plain exponential step-size schedule: eta_k = eta_0 * q_eta^k."""
+
     return float(params["step_size"]) * float(params["step_decay"]) ** int(iteration)
 
 
 def perturbation_radius(params: dict[str, Any], iteration: int) -> float:
-    """Plain exponential radius schedule: r_k = r_0 * q_r^k."""
+
     return float(params["radius"]) * float(params["radius_decay"]) ** int(iteration)
 
 
 def allocate_batches(params: dict[str, Any], iteration_batch: int) -> tuple[int, int, int]:
-    """Split the fixed 3*m_k budget into known, positive, and negative samples."""
+
     total = 3 * int(iteration_batch)
     known = int(round(total * float(params["known_fraction"])))
     remaining = total - known

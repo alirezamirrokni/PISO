@@ -44,7 +44,7 @@ DROPPED_DEMOGRAPHICS = (
 
 
 def _standardize_features(values: np.ndarray) -> np.ndarray:
-    """Match scikit-learn StandardScaler without requiring scikit-learn."""
+
     array = np.asarray(values, dtype=float)
     if array.ndim != 2:
         raise ValueError("Feature matrix must be two-dimensional")
@@ -65,7 +65,7 @@ def _binary_accuracy(labels: np.ndarray, predictions: np.ndarray) -> float:
 
 
 def _binary_roc_auc(labels: np.ndarray, scores: np.ndarray) -> float:
-    """Compute binary ROC AUC using average ranks for tied scores."""
+
     true_values = np.asarray(labels, dtype=float).reshape(-1)
     score_values = np.asarray(scores, dtype=float).reshape(-1)
     if true_values.shape != score_values.shape:
@@ -161,8 +161,8 @@ def load_classification_dataset(
     if missing:
         raise ValueError(f"Unexpected credit dataset schema; missing columns: {missing}")
 
-    # Match the paper's preprocessing: remove demographic indicators, standardize
-    # the remaining 11 features, balance both labels, shuffle, then split.
+    
+    
     frame = frame.loc[:, EXPECTED_COLUMNS].copy()
     labels = frame["NoDefaultNextMonth"].to_numpy(dtype=float)
     labels = np.where(labels > 0.0, 1.0, 0.0)
@@ -244,8 +244,8 @@ class StrategicClassificationProblem:
             return values.copy()
 
         margin = values @ weights + intercept
-        # The closest accepted point lies on w^T xi + b = 0. Agents move only
-        # when the squared movement cost is smaller than reward / tau.
+        
+        
         movement_cost = np.square(np.minimum(margin, 0.0)) / norm_sq
         should_react = (margin < 0.0) & (
             movement_cost < float(self.spec.reward) / self.tau
@@ -274,7 +274,7 @@ class StrategicClassificationProblem:
             "labels": np.asarray(labels, dtype=float),
         }
 
-    # Alias used by PISO implementations.
+    
     def sample_demands(
         self,
         x: np.ndarray,
@@ -292,7 +292,7 @@ class StrategicClassificationProblem:
         features = np.asarray(observations["features"], dtype=float)
         labels = np.asarray(observations["labels"], dtype=float)
         logits = features @ decision[:-1] + decision[-1]
-        # logaddexp gives stable binary cross-entropy from logits.
+        
         return np.logaddexp(0.0, logits) - labels * logits
 
     def sample_losses(

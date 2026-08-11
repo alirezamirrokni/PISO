@@ -43,7 +43,7 @@ class BaseMethod:
         return base
 
     def direction(self, base_seed: int, family: str, instance_id: int, iteration: int, dimension: int) -> np.ndarray:
-        # Method is deliberately omitted so ZOS and PZOS use exactly the same v_t.
+        
         seed = stable_seed(base_seed, family, instance_id, iteration, "direction")
         return unit_sphere_direction(dimension, seed)
 

@@ -40,8 +40,8 @@ class PZOS(BaseMethod):
             calls = int(restored["calls"])
 
         for iteration in range(iteration_start, iterations):
-            # The central response y*(x_t) is already available from the previous
-            # reporting point; it is the central oracle call in Algorithm 1.
+            
+            
             calls += 1
             direction = self.direction(base_seed, problem.family, instance_id, iteration, dimension)
             plus_y, plus_warm = problem.response(x + mu * direction, current_warm)

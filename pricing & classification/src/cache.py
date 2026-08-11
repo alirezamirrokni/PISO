@@ -62,11 +62,11 @@ def _hash_file(
     logical_path: str | None = None,
     replacements: tuple[tuple[bytes, bytes], ...] = (),
 ) -> None:
-    """Hash a source file, optionally under a stable logical path.
 
-    ``logical_path`` and ``replacements`` let renamed modules retain cache
-    compatibility when only their package path has changed.
-    """
+
+
+
+
     label = logical_path or path.relative_to(project_root).as_posix()
     content = path.read_bytes()
     for current, legacy in replacements:
@@ -76,12 +76,12 @@ def _hash_file(
 
 
 def build_run_fingerprint(project_root: Path, config: dict[str, Any]) -> str:
-    """Fingerprint only the configuration and reporting logic for final outputs.
 
-    A changed run fingerprint forces the aggregate files to be regenerated, but it
-    does not erase method checkpoints. Individual method checkpoints have their
-    own fingerprints.
-    """
+
+
+
+
+
     digest = hashlib.sha256()
     _hash_json(digest, config)
     digest.update(f"manifest-schema:{MANIFEST_SCHEMA}".encode("utf-8"))
@@ -120,11 +120,11 @@ def build_method_fingerprint(
     week_id: str,
     method: str,
 ) -> str:
-    """Fingerprint one method on one dataset.
 
-    Changing one method's parameters or implementation invalidates only that
-    method's CSV for that dataset. Unchanged methods remain reusable.
-    """
+
+
+
+
     experiment = config["experiment"]
     digest = hashlib.sha256()
     _hash_json(
@@ -188,7 +188,7 @@ def _safe(value: Any) -> str:
 
 
 def _compact_safe(value: Any) -> str:
-    """Compact readable value for cache filenames; fingerprints retain full precision."""
+
     if isinstance(value, float):
         value = format(value, ".6g")
     elif isinstance(value, list):
@@ -207,7 +207,7 @@ def _run_tag(config: dict[str, Any]) -> str:
 
 
 def _method_tag(method: str, params: dict[str, Any]) -> str:
-    """Build a concise readable cache prefix plus a full-config digest."""
+
     if method in {"GaussianPISO", "CyclePISO", "GaussianPISO2", "CyclePISO2"}:
         keys = [
             ("radius", "r"), ("radius_decay", "rd"),
@@ -470,12 +470,12 @@ def _method_candidates(
     method: str,
     configured_methods: list[str],
 ) -> list[Path]:
-    """Return cache files belonging exactly to one configured method.
 
-    Method names may be prefixes of other configured method names,
-    so broad glob matching is insufficient. Resolve the longest configured
-    method prefix first and keep only exact matches.
-    """
+
+
+
+
+
     ordered = sorted(configured_methods, key=len, reverse=True)
     candidates: list[Path] = []
     for path in folder.glob("*.csv"):
@@ -489,7 +489,7 @@ def _method_candidates(
 
 
 class ProblemCache:
-    """Store stable problem instances and canonical post-construction RNG states."""
+
 
     def __init__(self, path: Path, project_root: Path, config: dict[str, Any]) -> None:
         self.path = path
@@ -568,7 +568,7 @@ class ProblemCache:
 
 
 class CacheManager:
-    """Manage one checkpoint CSV for every dataset-method combination."""
+
 
     def __init__(
         self,
@@ -625,8 +625,8 @@ class CacheManager:
             filename = f"{_method_tag(method, method_params)}_{self.run_tag}.csv"
             path = folder / filename
 
-            # Keep one active CSV per dataset and method. When only this
-            # method's hyperparameters change, remove only its stale file.
+            
+            
             for candidate in _method_candidates(
                 folder, method, list(self.config["methods"])
             ):
@@ -656,11 +656,11 @@ class CacheManager:
         return JobCache(self._group(week_id, method), run_index, variant)
 
     def _all_method_rows_complete(self) -> bool:
-        """Verify that every configured dataset-method-run has a final cache row.
 
-        Aggregate output files and the manifest are not sufficient: users may
-        deliberately remove one method's CSV to force only that method to rerun.
-        """
+
+
+
+
         simulations = int(self.config["experiment"]["simulations"])
         for week_value in self.config["experiment"]["weeks"]:
             week_id = str(week_value).zfill(2)

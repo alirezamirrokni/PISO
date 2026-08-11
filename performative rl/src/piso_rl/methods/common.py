@@ -42,13 +42,13 @@ def scheduled_value(
     sample_count: int,
     legacy_decay_key: str | None = None,
 ) -> float:
-    """Return a positive, budget-aware optimizer parameter.
 
-    New configurations should use ``<name>_schedule`` with one of:
-    ``constant``, ``inverse_sqrt``, or ``exponential_samples``.  When no
-    schedule is supplied, the legacy per-iteration exponential behavior is
-    retained for backward compatibility.
-    """
+
+
+
+
+
+
 
     initial = float(params[name])
     if not np.isfinite(initial) or initial <= 0.0:
@@ -109,7 +109,7 @@ def clip_gradient(gradient: np.ndarray, max_norm: float | None) -> np.ndarray:
 
 
 def normalized_occupancy_shift(current: np.ndarray, previous: np.ndarray) -> float:
-    """Symmetric normalized L1 shift, guaranteed to lie in [0, 1]."""
+
 
     current_array = np.asarray(current, dtype=float)
     previous_array = np.asarray(previous, dtype=float)
@@ -145,7 +145,7 @@ def initialize_state(problem, evaluation_interval: int) -> dict[str, Any]:
 
 
 def _normalize_state(state: dict[str, Any], evaluation_interval: int) -> dict[str, Any]:
-    """Migrate progress caches created before sparse evaluation was added."""
+
     state.setdefault("samples", [0])
     state.setdefault("values", [])
     state.setdefault("occupancy_changes", [0.0])
@@ -180,7 +180,7 @@ def record(
     *,
     force: bool = False,
 ) -> bool:
-    """Record an exact metric only at the configured trajectory interval."""
+
     sample_count = int(state["sample_count"])
     next_sample = int(
         state.get(

@@ -61,12 +61,12 @@ def radius(params: dict, iteration: int, sample_count: int) -> float:
 def allocate_batches(
     params: dict[str, Any], iteration_batch: int
 ) -> tuple[int, int, int]:
-    """Allocate a fair per-update trajectory budget.
 
-    New configurations set ``total_batch`` explicitly.  Older configurations
-    retain the previous convention where ``batch_initial`` denoted one third of
-    the total PISO cost.
-    """
+
+
+
+
+
 
     total = int(params.get("total_batch", 3 * int(iteration_batch)))
     if total < 3:
@@ -121,7 +121,7 @@ def guided_direction(
     alpha: float,
     hint: np.ndarray,
 ) -> np.ndarray:
-    """Sample the covariance-shaped direction used by the published GZO update."""
+
     norm = float(np.linalg.norm(hint))
     unit_hint = hint / norm if norm > 0.0 else np.zeros(dimension, dtype=float)
     orthogonal = alpha / float(dimension)
@@ -200,13 +200,13 @@ def update_residual_rls(
     clip_norm: float | None,
     warmup_directions: int,
 ) -> np.ndarray:
-    """Fit the unknown environment-shift gradient from directional queries.
 
-    Each observation follows ``y_i ≈ u_i^T g_shift``.  A regularized,
-    exponentially weighted least-squares fit uses the full query history,
-    instead of injecting a single extremely noisy SPSA vector into every actor
-    update.  The confidence ramp suppresses early under-determined estimates.
-    """
+
+
+
+
+
+
 
     gram = np.asarray(state["residual_gram"], dtype=float)
     rhs = np.asarray(state["residual_rhs"], dtype=float)

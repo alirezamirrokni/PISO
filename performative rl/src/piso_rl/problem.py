@@ -22,13 +22,13 @@ class ProblemMetrics:
 
 
 class PerformativeRLProblem:
-    """Expose the PePG gridworld as a trajectory-based optimization problem.
 
-    The optimizer minimizes ``F(theta) = -J(theta)`` while reports display the
-    positive performative return ``J(theta)``.  Sampling deployment is kept
-    separate from exact occupancy evaluation so stochastic-gradient iterations
-    do not repeatedly construct reward/transition tensors they never use.
-    """
+
+
+
+
+
+
 
     def __init__(
         self,
@@ -135,11 +135,11 @@ class PerformativeRLProblem:
 
 
     def validate_policy_probabilities(self, probabilities: np.ndarray) -> np.ndarray:
-        """Validate and normalize a tabular principal policy.
 
-        This keeps tabular-policy validation separate from the feature-softmax
-        parameterization used by the gradient methods.
-        """
+
+
+
+
         array = np.asarray(probabilities, dtype=float)
         expected_shape = (self.env.dim, len(self.env.agents[1].actions))
         if array.shape != expected_shape:
@@ -157,7 +157,7 @@ class PerformativeRLProblem:
     def follower_policy_from_probabilities(
         self, principal_probabilities: np.ndarray
     ) -> np.ndarray:
-        """Return the follower response induced by a tabular principal policy."""
+
         inducing_probabilities = self.validate_policy_probabilities(
             principal_probabilities
         )
@@ -175,15 +175,15 @@ class PerformativeRLProblem:
         return np.asarray(probabilities, dtype=float)
 
     def follower_policy(self, environment_theta: np.ndarray) -> np.ndarray:
-        """Pure follower response induced by ``environment_theta``.
 
-        The previous implementation called ``env.response_model`` by mutating
-        the environment's agent policies.  That interacted badly with the
-        deployment cache: a finite-difference query could leave the mutable
-        environment at ``theta-minus`` while later evaluation reused cached
-        arrays for ``theta``.  This implementation computes the same response
-        directly from policy probabilities and never mutates agent state.
-        """
+
+
+
+
+
+
+
+
         environment_theta = self._validate_theta(environment_theta)
         return self.follower_policy_from_probabilities(
             self.policy(environment_theta)
@@ -194,7 +194,7 @@ class PerformativeRLProblem:
         policy_theta: np.ndarray,
         environment_theta: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Return actor probabilities and a separately induced response."""
+
         actor = np.asarray(self.policy(policy_theta), dtype=float).copy()
         follower = self.follower_policy(environment_theta)
         return actor, follower
@@ -204,7 +204,7 @@ class PerformativeRLProblem:
         actor: np.ndarray,
         follower: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Build exact reward, transition, and episodic occupancy arrays."""
+
         actor = np.asarray(actor, dtype=float)
         follower = np.asarray(follower, dtype=float)
         rewards = np.einsum(
@@ -222,10 +222,10 @@ class PerformativeRLProblem:
                 next_states = self.env._joint_next[:, action, follower_action]
                 transitions[states, action, next_states] += follower[:, follower_action]
 
-        # Episodes terminate on arrival at the terminal state.  Solve the
-        # discounted occupancy system only on nonterminal states, matching the
-        # rollout semantics exactly and avoiding the old tolerance-dependent
-        # fixed-point approximation in Gridworld._get_d.
+        
+        
+        
+        
         terminal = int(self.env.terminal_state_id)
         nonterminal = np.asarray(
             [state for state in range(self.env.dim) if state != terminal],
@@ -247,7 +247,7 @@ class PerformativeRLProblem:
     def deploy_policy_exact(
         self, principal_probabilities: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Exactly deploy an arbitrary tabular principal policy."""
+
         actor = self.validate_policy_probabilities(principal_probabilities)
         follower = self.follower_policy_from_probabilities(actor)
         rewards, transitions, occupancy = self._model_from_probabilities(
@@ -261,7 +261,7 @@ class PerformativeRLProblem:
         count: int,
         rng: np.random.RandomState,
     ) -> list[Trajectory]:
-        """Sample trajectories from an arbitrary tabular principal policy."""
+
         count = int(count)
         if count <= 0:
             raise ValueError("trajectory count must be positive")
@@ -277,13 +277,13 @@ class PerformativeRLProblem:
         policy_theta: np.ndarray,
         environment_theta: np.ndarray,
     ) -> float:
-        """Exactly evaluate ``J(policy_theta, environment_theta)``."""
+
         actor, follower = self.cross_deployment(policy_theta, environment_theta)
         rewards, _, occupancy = self._model_from_probabilities(actor, follower)
         return float(np.sum(occupancy * rewards))
 
     def deploy_sampling(self, theta: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Return cached principal/follower probability arrays for rollouts."""
+
         theta = self._validate_theta(theta)
         if self._same_theta(self._deployed_theta, theta):
             assert self._deployed_principal is not None
@@ -300,14 +300,14 @@ class PerformativeRLProblem:
     def deploy_exact(
         self, theta: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Deploy and exactly construct rewards, transitions, and occupancy."""
+
         probabilities, follower = self.deploy_sampling(theta)
         rewards, transitions, occupancy = self._model_from_probabilities(
             probabilities, follower
         )
         return probabilities, rewards, transitions, occupancy
 
-    # Backward-compatible alias retained for older callers.
+    
     def deploy(
         self, theta: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -425,14 +425,14 @@ class PerformativeRLProblem:
         count: int,
         rng: np.random.RandomState,
     ) -> tuple[np.ndarray, list[Trajectory], np.ndarray, list[Trajectory]]:
-        """Sample antithetic queries with common random numbers.
 
-        Every plus/minus trajectory pair receives the same independent child
-        seed.  This preserves unbiased marginal rollouts while substantially
-        reducing the variance of finite-difference estimates.  Separate child
-        generators prevent one early terminal episode from de-synchronizing
-        later trajectory pairs.
-        """
+
+
+
+
+
+
+
 
         count = int(count)
         if count <= 0:
@@ -529,7 +529,7 @@ class PerformativeRLProblem:
         if not trajectories:
             raise ValueError("at least one trajectory is required")
 
-        # Compute policy probabilities exactly once for the entire gradient batch.
+        
         probabilities = self.policy(theta)
         return np.stack(
             [

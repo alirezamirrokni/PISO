@@ -1,13 +1,11 @@
 family: routing
-output_dir: "D:/piso-runs/routing game"
-
+output_dir: results/bilevel/routing
 experiment:
   seed: 2025
   instances: 225
   iterations: 150
   jobs: 1
   checkpoint_interval: 5
-
 problem:
   vertices_min: 6
   vertices_max: 25
@@ -15,7 +13,17 @@ problem:
   edges_max: 119
   groups_min: 2
   groups_max: 5
-  demand_values: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  demand_values:
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
   sensitivity_min: 0.1
   sensitivity_max: 2.0
   latency_a_min: 1.0
@@ -23,9 +31,8 @@ problem:
   latency_b_min: 1.0
   latency_b_max: 10.0
   regularization: 1.0
-  wardrop_tolerance: 1.0e-7
+  wardrop_tolerance: 1.0e-07
   wardrop_max_iterations: 80
-
 methods:
   ZOS:
     mu: 0.5
@@ -37,98 +44,126 @@ methods:
     step_size: 0.7
     scale_by_dimension: true
     step_schedule: constant
-
   ZO_TG:
-    radius: 0.50
+    radius: 0.5
     radius_schedule: constant
-    step_size: 0.70
+    step_size: 0.7
     scale_by_dimension: true
     step_schedule: constant
-    update_clip: 0.00
+    update_clip: 0.0
   ZO_OG:
-    radius: 0.50
+    radius: 0.5
     radius_schedule: constant
     step_size: 0.01
     scale_by_dimension: true
     step_schedule: constant
-    update_clip: 0.00
+    update_clip: 0.0
   ZO_OGVR:
-    radius: 0.50
+    radius: 0.5
     radius_schedule: constant
-    step_size: 0.20
+    step_size: 0.2
     scale_by_dimension: true
     step_schedule: constant
     history_window: 10
-    distance_weight: 0.10
-    update_clip: 0.00
-
-  GZO_NS: &gzo_common
-    radius: 0.50
+    distance_weight: 0.1
+    update_clip: 0.0
+  GZO_NS:
+    radius: 0.5
     radius_schedule: constant
-    step_size: 0.70
+    step_size: 0.7
     scale_by_dimension: true
     step_schedule: constant
-    alpha_initial: 0.00
+    alpha_initial: 0.0
     alpha_damping: 0.98
     history_window: 5
-    update_clip: 0.00
+    update_clip: 0.0
   GZO_HS:
-    <<: *gzo_common
-
-  GaussianPISO: &piso_common
-    radius: 0.50
+    radius: 0.5
     radius_schedule: constant
-    step_size: 0.70
+    step_size: 0.7
     scale_by_dimension: true
     step_schedule: constant
-    gamma: 1.00
+    alpha_initial: 0.0
+    alpha_damping: 0.98
+    history_window: 5
+    update_clip: 0.0
+  GaussianPISO:
+    radius: 0.5
+    radius_schedule: constant
+    step_size: 0.7
+    scale_by_dimension: true
+    step_schedule: constant
+    gamma: 1.0
     rho: 0.98
     alpha: 0.98
     cycle_length: 10
-    unknown_clip_ratio: 1.00
-    known_norm_floor: 1.00
-    innovation_clip: 0.00
-    update_clip: 0.00
+    unknown_clip_ratio: 1.0
+    known_norm_floor: 1.0
+    innovation_clip: 0.0
+    update_clip: 0.0
   CyclePISO:
-    <<: *piso_common
-
-  GaussianPISO2: &piso2_common
-    radius: 0.50
+    radius: 0.5
     radius_schedule: constant
-    step_size: 0.70
+    step_size: 0.7
     scale_by_dimension: true
     step_schedule: constant
-    gamma: 1.00
+    gamma: 1.0
     rho: 0.98
-    lambda: 0.10
     alpha: 0.98
     cycle_length: 10
-    unknown_clip_ratio: 1.00
-    known_norm_floor: 1.00
-    innovation_clip: 0.00
-    update_clip: 0.00
+    unknown_clip_ratio: 1.0
+    known_norm_floor: 1.0
+    innovation_clip: 0.0
+    update_clip: 0.0
+  GaussianPISO2:
+    radius: 0.5
+    radius_schedule: constant
+    step_size: 0.7
+    scale_by_dimension: true
+    step_schedule: constant
+    gamma: 1.0
+    rho: 0.98
+    lambda: 0.1
+    alpha: 0.98
+    cycle_length: 10
+    unknown_clip_ratio: 1.0
+    known_norm_floor: 1.0
+    innovation_clip: 0.0
+    update_clip: 0.0
   CyclePISO2:
-    <<: *piso2_common
-
+    radius: 0.5
+    radius_schedule: constant
+    step_size: 0.7
+    scale_by_dimension: true
+    step_schedule: constant
+    gamma: 1.0
+    rho: 0.98
+    lambda: 0.1
+    alpha: 0.98
+    cycle_length: 10
+    unknown_clip_ratio: 1.0
+    known_norm_floor: 1.0
+    innovation_clip: 0.0
+    update_clip: 0.0
 plotting:
   methods:
-    - ZOS
-    # - ZO_TG
-    # - ZO_OG
-    # - ZO_OGVR
-    - GZO_NS
-    - GZO_HS
-    - PZOS
-    - GaussianPISO
-    - CyclePISO
-    - GaussianPISO2
-    - CyclePISO2
+  - ZOS
+  - GZO_NS
+  - GZO_HS
+  - PZOS
+  - GaussianPISO
+  - CyclePISO
+  - GaussianPISO2
+  - CyclePISO2
   normalization_methods:
-    - ZOS
-    - PZOS
-  scatter_iterations: [10, 25, 50]
+  - ZOS
+  - PZOS
+  scatter_iterations:
+  - 10
+  - 25
+  - 50
   pairwise_methods:
-    - GaussianPISO
-    - CyclePISO
-    - GaussianPISO2
-    - CyclePISO2
+  - GaussianPISO
+  - CyclePISO
+  - GaussianPISO2
+  - CyclePISO2

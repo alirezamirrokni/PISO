@@ -17,21 +17,21 @@ from .common import (
 
 
 class OraclePePG:
-    """Exact performative-policy-gradient oracle.
 
-    This is the privileged reference for the comparison.  At every update it
-    receives the exact gradient of the *actual* performative objective used for
-    evaluation, including the policy, reward-response, and transition-response
-    terms.  The gradient is validated against central finite differences in the
-    test suite.
 
-    It is intentionally stronger than every trajectory method.  The x-axis uses
-    ``equivalent_batch`` trajectory-equivalent units per oracle update solely to
-    align the number of update opportunities; the oracle does not consume those
-    trajectories.  A monotone Armijo backtracking line search uses exact values
-    and therefore makes the access advantage explicit rather than hiding it in a
-    noisy actor--critic implementation.
-    """
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     name = "OraclePePG"
     seed_alias = "OraclePePG"
@@ -69,10 +69,10 @@ class OraclePePG:
         )
 
     def run(self, problem, rng, context, cache):
-        del rng  # The exact oracle is deterministic for a fixed problem.
+        del rng  
 
-        # Keep the standard cache layout, but use a fixed dummy RNG state for
-        # compatibility with RunCache's progress format.
+        
+        
         dummy_rng = np.random.RandomState(0)
         state, _ = restore_or_initialize(
             cache,

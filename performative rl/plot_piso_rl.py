@@ -13,7 +13,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Regenerate PISO RL figures from figure_data.csv"
     )
-    parser.add_argument("--output", default="results/piso-v4-heldout")
+    parser.add_argument("--output", default=str(Path(__file__).resolve().parent.parent / "results" / "piso_v4_heldout"))
     parser.add_argument(
         "--config",
         default=None,

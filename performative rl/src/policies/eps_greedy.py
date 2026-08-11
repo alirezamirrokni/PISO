@@ -9,7 +9,7 @@ class Eps_Greedy_Policy:
         self.eps = eps
 
     def _get_probs(self, state_id):
-        """ """
+
         action = np.argmax([self.Q_star[state_id, action] for action in self.actions])
         actions_num = len(self.actions)
         probs = np.full(actions_num, self.eps / (actions_num - 1))

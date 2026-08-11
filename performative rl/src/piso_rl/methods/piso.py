@@ -28,22 +28,22 @@ from .piso_utils import (
 
 
 class _BasePISO:
-    """Policy-informed stochastic optimisation using deployable queries only.
 
-    Let ``F(theta) = -J(theta, theta)`` be the loss on the performative
-    diagonal.  PISO combines a score-function estimate of the ordinary policy
-    component with directional finite differences of the *same diagonal
-    objective*.  For direction ``u``,
 
-        dF(theta)[u] = partial_policy F(theta, theta)[u]
-                     + partial_shift  F(theta, theta)[u].
 
-    The shift observation is therefore the diagonal finite difference minus the
-    current policy-gradient projection.  No query holds the acting policy fixed
-    while changing only the environment-inducing policy; that cross-deployment
-    operation is not available to Vanilla PG or the ZO/GZO baselines and would
-    make the comparison unfair.
-    """
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     variant = "gaussian"
     two_level = False

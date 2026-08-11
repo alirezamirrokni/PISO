@@ -25,7 +25,7 @@ plt.rcParams.update(
 
 
 STYLES = {
-    # Shared styles: keep these identical in every experiment.
+    
     "GZO_NS": {"color": "blue", "marker": "o", "linestyle": "-"},
     "GZO_HS": {"color": "cyan", "marker": "s", "linestyle": "-"},
     "ZO_TG": {"color": "green", "marker": "^", "linestyle": "-"},
@@ -44,9 +44,9 @@ DISPLAY_NAMES: dict[str, str] = {
 }
 
 
-# -----------------------------------------------------------------------------
-# Public output function
-# -----------------------------------------------------------------------------
+
+
+
 
 def write_outputs(
     results: list[dict],
@@ -61,13 +61,13 @@ def write_outputs(
     post_drop_tail_fraction: float = 0.25,
     final_window_fraction: float = 0.30,
 ) -> None:
-    """Write result tables and mean ± standard-error trajectory plots.
 
-    Every available simulation contributes to the plotted mean and standard
-    error. ``figure_run`` is still used to save the exact single-run trajectory
-    that the previous plotting code displayed, which makes old-versus-new plots
-    directly auditable.
-    """
+
+
+
+
+
+
     selected_run_number = int(figure_run) + 1
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -136,12 +136,12 @@ def write_outputs(
     )
 
 
-# -----------------------------------------------------------------------------
-# Aggregation
-# -----------------------------------------------------------------------------
+
+
+
 
 def _build_final_summary(final: pd.DataFrame, methods: list[str]) -> pd.DataFrame:
-    """Summarize final objectives by week with mean, SD, SE, and run count."""
+
     summary_rows: list[dict[str, object]] = []
 
     for (week_id, week), frame in final.groupby(
@@ -182,13 +182,13 @@ def _build_final_summary(final: pd.DataFrame, methods: list[str]) -> pd.DataFram
 
 
 def _aggregate_trace_statistics(raw: pd.DataFrame) -> pd.DataFrame:
-    """Compute exact pointwise mean, SD, and SE over runs.
 
-    No interpolation, extrapolation, smoothing, or resampling is performed.
-    For each week and method, every run must contain the same strictly increasing
-    sample-count sequence. A mismatch raises an error instead of silently
-    changing the center curve.
-    """
+
+
+
+
+
+
     output_columns = [
         "week_id",
         "week",
@@ -329,7 +329,7 @@ def _aggregate_trace_statistics(raw: pd.DataFrame) -> pd.DataFrame:
                     "week": week,
                     "method": method,
                     "samples": int(sample),
-                    # Backward-compatible alias: objective is exactly the mean.
+                    
                     "objective": float(mean),
                     "objective_mean": float(mean),
                     "objective_sd": float(sd),
@@ -343,9 +343,9 @@ def _aggregate_trace_statistics(raw: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=output_columns)
 
 
-# -----------------------------------------------------------------------------
-# Axis-limit helpers
-# -----------------------------------------------------------------------------
+
+
+
 
 def _finite_values(values: pd.Series | np.ndarray) -> np.ndarray:
     finite = np.asarray(values, dtype=float)
@@ -353,7 +353,7 @@ def _finite_values(values: pd.Series | np.ndarray) -> np.ndarray:
 
 
 def _uncertainty_limit_frame(frame: pd.DataFrame) -> pd.DataFrame:
-    """Convert mean ± SE bounds into the shape expected by limit helpers."""
+
     lower = frame[["method", "samples", "objective_lower"]].rename(
         columns={"objective_lower": "objective"}
     )
@@ -370,7 +370,7 @@ def _post_drop_values(
     remaining_fraction: float,
     tail_fraction: float,
 ) -> np.ndarray:
-    """Return values after each method's initial sharp descent."""
+
     retained: list[np.ndarray] = []
 
     for method in methods:
@@ -422,7 +422,7 @@ def _final_window_values(
     *,
     fraction: float,
 ) -> np.ndarray:
-    """Return only the final fraction of each plotted trajectory."""
+
     retained: list[np.ndarray] = []
     fraction = float(fraction)
 
@@ -473,9 +473,9 @@ def _axis_limits(
     return y_min - margin, y_max + margin
 
 
-# -----------------------------------------------------------------------------
-# Plotting
-# -----------------------------------------------------------------------------
+
+
+
 
 
 def _format_axis(axis: object) -> None:
@@ -562,7 +562,7 @@ def _plot(
 
             legend_handles.setdefault(method, line)
 
-        # Include the complete mean ± SE envelope when selecting y-axis limits.
+        
         limit_frame = _uncertainty_limit_frame(plotted_frame)
 
         if y_limit_mode == "post_drop":
