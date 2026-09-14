@@ -13,7 +13,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Regenerate PISO RL figures from figure_data.csv"
     )
-    parser.add_argument("--output", default=str(Path(__file__).resolve().parent.parent / "results" / "piso_v4_heldout"))
+    parser.add_argument("--output", default=str(Path(__file__).resolve().parent / "results" / "piso_v4_heldout"))
     parser.add_argument(
         "--config",
         default=None,
@@ -56,7 +56,6 @@ def main() -> None:
         else int(report_config.get("smoothing_window", 5))
     )
     plotting_methods = report_config.get("plotting_methods")
-    total_iterations = int(report_config.get("total_iterations", 1000))
     show_raw_curves = (
         bool(args.show_raw_curves)
         if args.show_raw_curves is not None
@@ -85,7 +84,6 @@ def main() -> None:
         smoothing_window=max(1, smoothing_window),
         plotting_methods=plotting_methods,
         show_raw_curves=show_raw_curves,
-        total_iterations=total_iterations,
     )
     print(f"Regenerated figures in {output}")
 

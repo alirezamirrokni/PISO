@@ -42,7 +42,6 @@ report:
   - GaussianPISO2
   - CyclePISO2
   - PePG
-  total_iterations: 1000
 environment:
   beta: 5.0
   eps: 0.5
@@ -145,96 +144,68 @@ methods:
     batch_increment: 0
     gradient_clip_norm: 0.25
   GaussianPISO:
-    radius: 1.0
-    radius_schedule: inverse_sqrt
-    radius_scale: 300000
-    radius_min: 0.5
-    step_size: 0.1
+    radius: 2.0
+    radius_schedule: constant
+    step_size: 0.8
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.03
+    step_size_min: 0.02
     gamma: 1.0
-    rho: 0.98
-    known_fraction: 0.5
+    rho: 0.97
+    rho_k: 0.0
+    known_fraction: 0.34
     batch_initial: 34
     total_batch: 100
     batch_increment: 0
     directions_per_update: 1
-    rls_forgetting: 0.997
-    rls_ridge: 4.0
-    residual_warmup_directions: 64
-    residual_clip_norm: 0.05
-    directional_derivative_clip: 0.5
-    gradient_clip_norm: 0.25
   CyclePISO:
-    radius: 1.0
-    radius_schedule: inverse_sqrt
-    radius_scale: 300000
-    radius_min: 0.5
-    step_size: 0.1
+    radius: 2.0
+    radius_schedule: constant
+    step_size: 0.8
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.03
+    step_size_min: 0.02
     gamma: 1.0
-    rho: 0.98
-    known_fraction: 0.5
+    rho: 0.97
+    rho_k: 0.0
+    known_fraction: 0.34
     batch_initial: 34
     total_batch: 100
     batch_increment: 0
     directions_per_update: 1
-    rls_forgetting: 0.997
-    rls_ridge: 4.0
-    residual_warmup_directions: 64
-    residual_clip_norm: 0.05
-    directional_derivative_clip: 0.5
-    gradient_clip_norm: 0.25
     cycle_length: 16
   GaussianPISO2:
-    radius: 1.0
-    radius_schedule: inverse_sqrt
-    radius_scale: 300000
-    radius_min: 0.5
-    step_size: 0.1
+    radius: 2.0
+    radius_schedule: constant
+    step_size: 0.8
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.03
+    step_size_min: 0.02
     gamma: 1.0
-    rho: 0.98
-    known_fraction: 0.5
+    rho: 0.97
+    rho_k: 0.0
+    known_fraction: 0.34
     batch_initial: 34
     total_batch: 100
     batch_increment: 0
     directions_per_update: 1
-    rls_forgetting: 0.997
-    rls_ridge: 4.0
-    residual_warmup_directions: 64
-    residual_clip_norm: 0.05
-    directional_derivative_clip: 0.5
-    gradient_clip_norm: 0.25
-    lambda: 0.1
+    lambda: 0.03
   CyclePISO2:
-    radius: 1.0
-    radius_schedule: inverse_sqrt
-    radius_scale: 300000
-    radius_min: 0.5
-    step_size: 0.1
+    radius: 2.0
+    radius_schedule: constant
+    step_size: 0.8
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.03
+    step_size_min: 0.02
     gamma: 1.0
-    rho: 0.98
-    known_fraction: 0.5
+    rho: 0.97
+    rho_k: 0.0
+    known_fraction: 0.34
     batch_initial: 34
     total_batch: 100
     batch_increment: 0
     directions_per_update: 1
-    rls_forgetting: 0.997
-    rls_ridge: 4.0
-    residual_warmup_directions: 64
-    residual_clip_norm: 0.05
-    directional_derivative_clip: 0.5
-    gradient_clip_norm: 0.25
-    lambda: 0.1
+    lambda: 0.03
     cycle_length: 16
   PePG:
     step_size: 0.5

@@ -314,24 +314,15 @@ def run_piso_variant(
             mode = str(params["residual_mode"])
             rho = float(params["rho"])
             if mode == "recursive":
-                
-                
-                
-                
-                
-                
-                
-                control = gamma * known
+                # Sketch the tracking error, rather than averaging fresh targets.
+                control = gamma * known + momentum
                 innovation_values = [
                     float(derivative - np.dot(control, direction))
                     for derivative, direction in zip(derivatives, directions)
                 ]
-                residual = np.mean(
-                    [
-                        innovation * score
-                        for innovation, score in zip(innovation_values, scores)
-                    ],
-                    axis=0,
+                residual = momentum + np.mean(
+                    [innovation * score for innovation, score
+                     in zip(innovation_values, scores)], axis=0,
                 )
             elif mode == "fresh_centered":
                 

@@ -509,14 +509,12 @@ def build_reports(traces: list, config: dict, output_dir: str | Path) -> None:
     smoothing_window = int(report_config.get("smoothing_window", 5))
     plotting_methods = report_config.get("plotting_methods")
     show_raw_curves = bool(report_config.get("show_raw_curves", False))
-    total_iterations = int(report_config.get("total_iterations", 1000))
     _plot(
         aggregate_rows,
         output,
         smoothing_window=smoothing_window,
         plotting_methods=plotting_methods,
         show_raw_curves=show_raw_curves,
-        total_iterations=total_iterations,
     )
 
 
@@ -564,11 +562,7 @@ def _plot(
     smoothing_window: int = 5,
     plotting_methods: list[str] | None = None,
     show_raw_curves: bool = False,
-    total_iterations: int = 1000,
 ) -> None:
-    if total_iterations <= 0:
-        raise ValueError("total_iterations must be positive")
-
     available_methods: list[str] = []
     for row in rows:
         method = str(row["method"])
@@ -591,6 +585,7 @@ def _plot(
 
     
     
+    max_samples = max(int(row["samples"]) for row in rows if row["method"] in methods)
     fig, axes = plt.subplots(1, 2, figsize=(16.8, 6.6))
     return_axis, stability_axis = axes
 
@@ -599,9 +594,7 @@ def _plot(
             [row for row in rows if row["method"] == method],
             key=lambda row: int(row["samples"]),
         )
-        iterations = np.linspace(
-            0.0, float(total_iterations), num=len(selected), dtype=float
-        )
+        iterations = np.asarray([row["samples"] for row in selected], dtype=float)
         value_mean = np.asarray(
             [row["value_mean"] for row in selected], dtype=float
         )
@@ -691,15 +684,15 @@ def _plot(
             zorder=4,
         )
 
-    return_axis.set_xlim(0.0, float(total_iterations))
-    return_axis.set_xlabel(r"iteration $t$")
+    return_axis.set_xlim(0.0, float(max(1, max_samples)))
+    return_axis.set_xlabel("Trajectories")
     return_axis.set_ylabel(r"$\hat{V}^{\pi}_{\pi}$")
     return_axis.grid(alpha=0.30)
     _format_axis(return_axis)
 
-    stability_axis.set_xlim(0.0, float(total_iterations))
-    stability_axis.set_xlabel(r"iteration $t$")
-    stability_axis.set_ylabel(r"$\Vert d_{t+1} - d_t \Vert_2$")
+    stability_axis.set_xlim(0.0, float(max(1, max_samples)))
+    stability_axis.set_xlabel("Trajectories")
+    stability_axis.set_ylabel("Occupancy change (normalized L1)")
     stability_axis.set_yscale("log")
     stability_axis.set_ylim(bottom=1e-8, top=1.05)
     stability_axis.grid(alpha=0.30)
@@ -720,9 +713,7 @@ def _plot(
             [row for row in rows if row["method"] == method],
             key=lambda row: int(row["samples"]),
         )
-        iterations = np.linspace(
-            0.0, float(total_iterations), num=len(selected), dtype=float
-        )
+        iterations = np.asarray([row["samples"] for row in selected], dtype=float)
         mean = np.asarray([row["value_mean"] for row in selected], dtype=float)
         lower = np.asarray([row["value_lower"] for row in selected], dtype=float)
         upper = np.asarray([row["value_upper"] for row in selected], dtype=float)
@@ -753,8 +744,8 @@ def _plot(
             zorder=3,
         )
 
-    absolute_axis.set_xlim(0.0, float(total_iterations))
-    absolute_axis.set_xlabel(r"iteration $t$")
+    absolute_axis.set_xlim(0.0, float(max(1, max_samples)))
+    absolute_axis.set_xlabel("Trajectories")
     absolute_axis.set_ylabel(r"$\hat{V}^{\pi}_{\pi}$")
     absolute_axis.grid(alpha=0.30)
     _format_axis(absolute_axis)

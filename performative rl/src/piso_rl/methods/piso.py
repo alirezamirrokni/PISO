@@ -2,57 +2,26 @@ from __future__ import annotations
 
 import numpy as np
 
-from .common import (
-    batch_size,
-    can_afford,
-    clip_gradient,
-    finish,
-    initialize_state,
-    record,
-    restore_or_initialize,
-    save_step,
-)
-from .piso_utils import (
-    allocate_batches,
-    clip_vector,
-    haar_frame,
-    known_gradient,
-    radius,
-    split_direction_batches,
-    step_size,
-    two_level_residual,
-    update_residual_rls,
-    validate_common_params,
-    validate_two_level,
-)
+from .common import (batch_size, can_afford, finish, initialize_state, record,
+                     restore_or_initialize, save_step)
+from .piso_utils import (allocate_batches, haar_frame, known_gradient, radius,
+                         step_size, validate_common_params, validate_two_level)
 
 
 class _BasePISO:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    """Centered Algorithm 1; lambda mixes the fresh residual and updated state."""
 
     variant = "gaussian"
     two_level = False
     name = "PISO"
     seed_alias = "PISO"
+    cache_implementation = "centered-v1-independent-warmstart"
 
     def __init__(self, params: dict) -> None:
         self.p = dict(params)
         validate_common_params(self.p, self.name)
+        if not self.two_level and float(self.p.get("lambda", 0.0)) != 0.0:
+            raise ValueError("PISO requires lambda=0; use PISO2 for readout mixing")
         if self.two_level:
             validate_two_level(self.p, self.name)
         if self.variant == "cycle" and int(self.p["cycle_length"]) <= 0:
@@ -60,11 +29,8 @@ class _BasePISO:
 
     def _initialize(self, problem, rng, evaluation_interval):
         state = initialize_state(problem, evaluation_interval)
-        state["residual_gram"] = np.zeros((problem.n, problem.n), dtype=float)
-        state["residual_rhs"] = np.zeros(problem.n, dtype=float)
-        state["residual_estimate"] = np.zeros(problem.n, dtype=float)
-        state["fast_residual"] = np.zeros(problem.n, dtype=float)
-        state["residual_observations"] = 0
+        state["residual_state"] = np.zeros(problem.n, dtype=float)
+        state["known_state"] = None
         if self.variant == "cycle":
             cycle_length = min(int(self.p["cycle_length"]), problem.n)
             state["direction_frame"] = haar_frame(rng, problem.n, cycle_length)
@@ -104,17 +70,13 @@ class _BasePISO:
             lambda: self._initialize(problem, rng, context.evaluation_interval),
             context.evaluation_interval,
         )
-        state.setdefault("residual_gram", np.zeros((problem.n, problem.n)))
-        state.setdefault("residual_rhs", np.zeros(problem.n))
-        state.setdefault("residual_estimate", np.zeros(problem.n))
-        state.setdefault("fast_residual", np.zeros(problem.n))
-        state.setdefault("residual_observations", 0)
+        if "residual_state" not in state or "known_state" not in state:
+            raise ValueError("Checkpoint is not a centered Algorithm 1 state")
 
-        known_weight = float(self.p["gamma"])
-        fast_decay = float(self.p["rho"])
+        gamma = float(self.p["gamma"])
+        rho = float(self.p["rho"])
+        rho_k = float(self.p.get("rho_k", 0.0))
         mixing = float(self.p.get("lambda", 0.0))
-        directions_per_update = int(self.p.get("directions_per_update", 1))
-
         while True:
             iteration = int(state["iteration"])
             iteration_batch = batch_size(self.p, iteration)
@@ -123,87 +85,55 @@ class _BasePISO:
             )
             if plus_count != minus_count:
                 raise RuntimeError("paired PISO queries require equal batch sizes")
+            if int(self.p.get("directions_per_update", 1)) != 1:
+                raise ValueError("exact Algorithm 1 PISO requires one direction per update")
             cost = known_count + plus_count + minus_count
-            if not can_afford(state, cost, context.max_trajectories):
+            warm_cost = known_count if state["known_state"] is None else 0
+            if not can_afford(state, cost + warm_cost, context.max_trajectories):
                 break
 
             theta = np.asarray(state["theta"], dtype=float)
+            if warm_cost:
+                warm_observations = problem.sample_observations(theta, warm_cost, rng)
+                state["known_state"] = known_gradient(problem, theta, warm_observations)
+                state["sample_count"] += warm_cost
             observations = problem.sample_observations(theta, known_count, rng)
             gradient_known = known_gradient(problem, theta, observations)
+            direction, score, mu = self._direction_and_score(
+                problem, rng, state
+            )
+            plus, _, minus, _ = problem.sample_paired_losses(
+                theta + mu * direction,
+                theta - mu * direction,
+                plus_count,
+                rng,
+            )
+            directional = float((plus.mean() - minus.mean()) / (2.0 * mu))
 
-            direction_batches = split_direction_batches(
-                plus_count, directions_per_update
+            residual = np.asarray(state["residual_state"], dtype=float)
+            innovation = directional - float(
+                np.dot(gamma * gradient_known + residual, direction)
             )
-            directions: list[np.ndarray] = []
-            scores: list[np.ndarray] = []
-            derivatives: list[float] = []
-            derivative_clip = self.p.get("directional_derivative_clip")
+            residual_observation = residual + innovation * np.asarray(score)
+            residual_next = rho * residual + (1.0 - rho) * residual_observation
 
-            for query_count in direction_batches:
-                direction, score, mu = self._direction_and_score(
-                    problem, rng, state
-                )
-                plus, _, minus, _ = problem.sample_paired_losses(
-                    theta + mu * direction,
-                    theta - mu * direction,
-                    query_count,
-                    rng,
-                )
-                diagonal_derivative = float(
-                    (plus.mean() - minus.mean()) / (2.0 * mu)
-                )
-                policy_derivative = float(np.dot(gradient_known, direction))
-                shift_derivative = diagonal_derivative - policy_derivative
-                if derivative_clip is not None:
-                    limit = float(derivative_clip)
-                    shift_derivative = float(
-                        np.clip(shift_derivative, -limit, limit)
-                    )
-                directions.append(np.asarray(direction, dtype=float))
-                scores.append(np.asarray(score, dtype=float))
-                derivatives.append(shift_derivative)
-                self._advance_cycle(problem, rng, state)
-
-            slow_residual = update_residual_rls(
-                state,
-                directions,
-                derivatives,
-                forgetting=float(self.p.get("rls_forgetting", 1.0)),
-                ridge=float(self.p.get("rls_ridge", 1.0)),
-                clip_norm=self.p.get("residual_clip_norm"),
-                warmup_directions=int(
-                    self.p.get("residual_warmup_directions", problem.n)
-                ),
+            known_previous = state.get("known_state")
+            known_next = (
+                rho_k * np.asarray(known_previous, dtype=float)
+                + (1.0 - rho_k) * gradient_known
             )
-
-            instant_residual = np.mean(
-                [value * score for value, score in zip(derivatives, scores)],
-                axis=0,
-            )
-            instant_residual = clip_vector(
-                instant_residual, self.p.get("residual_clip_norm")
-            )
-            fast_residual = (
-                fast_decay * np.asarray(state["fast_residual"], dtype=float)
-                + (1.0 - fast_decay) * instant_residual
-            )
-            fast_residual = clip_vector(
-                fast_residual, self.p.get("residual_clip_norm")
-            )
-            state["fast_residual"] = fast_residual
-
-            residual_direction = (
-                two_level_residual(slow_residual, fast_residual, mixing)
-                if self.two_level
-                else slow_residual
-            )
-            gradient = known_weight * gradient_known + residual_direction
-            gradient = clip_gradient(gradient, self.p.get("gradient_clip_norm"))
+            readout = mixing * residual_observation + (1.0 - mixing) * residual_next
+            gradient = gamma * known_next + readout
+            if not np.all(np.isfinite(gradient)):
+                raise FloatingPointError("Algorithm 1 produced a non-finite gradient")
             eta = step_size(self.p, iteration, int(state["sample_count"]))
 
+            state["residual_state"] = residual_next
+            state["known_state"] = known_next
             state["sample_count"] += cost
             state["theta"] = theta - eta * gradient
             state["iteration"] = iteration + 1
+            self._advance_cycle(problem, rng, state)
             record(state, problem, context.evaluation_interval)
             save_step(cache, state, rng)
 
@@ -213,24 +143,24 @@ class _BasePISO:
 class GaussianPISO(_BasePISO):
     name = "GaussianPISO"
     variant = "gaussian"
-    seed_alias = "GaussianPISOFamily"
+    seed_alias = "GaussianPISOAlgorithm1Family"
 
 
 class CyclePISO(_BasePISO):
     name = "CyclePISO"
     variant = "cycle"
-    seed_alias = "CyclePISOFamily"
+    seed_alias = "CyclePISOAlgorithm1Family"
 
 
 class GaussianPISO2(_BasePISO):
     name = "GaussianPISO2"
     variant = "gaussian"
     two_level = True
-    seed_alias = "GaussianPISOFamily"
+    seed_alias = "GaussianPISOAlgorithm1Family"
 
 
 class CyclePISO2(_BasePISO):
     name = "CyclePISO2"
     variant = "cycle"
     two_level = True
-    seed_alias = "CyclePISOFamily"
+    seed_alias = "CyclePISOAlgorithm1Family"

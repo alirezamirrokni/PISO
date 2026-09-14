@@ -81,7 +81,11 @@ def _run_single(
         "checkpoint_interval": context.checkpoint_interval,
         "rng_seed": rng_seed,
     }
-    cache = RunCache(cache_root, method_name, seed, fingerprint_payload)
+    implementation = getattr(method, "cache_implementation", None)
+    if implementation is not None:
+        fingerprint_payload["implementation"] = implementation
+    cache_name = method_name if implementation is None else method_name + "_Algorithm1"
+    cache = RunCache(cache_root, cache_name, seed, fingerprint_payload)
     cache.checkpoint_interval = int(context.checkpoint_interval)
     if reset_cache:
         cache.reset()

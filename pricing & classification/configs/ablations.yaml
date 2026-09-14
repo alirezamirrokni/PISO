@@ -37,7 +37,7 @@ defaults:
     step_decay: 0.98
     gamma: 2.0
     rho: 0.92
-    lambda: 0.25
+    lambda: 0.00
     known_fraction: 0.5
     batch_initial: 30
     batch_increment: 2

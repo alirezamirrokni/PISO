@@ -22,20 +22,21 @@ def validate_common_params(params: dict[str, Any], method_name: str) -> None:
         raise ValueError(f"{method_name} batch_increment must be nonnegative")
     if int(params.get("directions_per_update", 1)) <= 0:
         raise ValueError(f"{method_name} directions_per_update must be positive")
-    for key in ("rls_ridge", "residual_clip_norm", "directional_derivative_clip"):
-        if key in params:
-            value = float(params[key])
-            if not np.isfinite(value) or value <= 0.0:
-                raise ValueError(f"{method_name} {key} must be finite and positive")
-    forgetting = float(params.get("rls_forgetting", 1.0))
-    if not 0.0 < forgetting <= 1.0:
-        raise ValueError(f"{method_name} rls_forgetting must lie in (0, 1]")
-    if "gradient_clip_norm" in params:
-        clip = float(params["gradient_clip_norm"])
-        if not np.isfinite(clip) or clip <= 0.0:
-            raise ValueError(
-                f"{method_name} gradient_clip_norm must be finite and positive"
-            )
+    rho_k = float(params.get("rho_k", 0.0))
+    if not 0.0 <= rho_k < 1.0:
+        raise ValueError(f"{method_name} rho_k must lie in [0, 1)")
+    if int(params.get("directions_per_update", 1)) != 1:
+        raise ValueError("Algorithm 1 uses exactly one direction per update")
+    allowed = {
+        "radius", "radius_schedule", "radius_scale", "radius_min", "radius_decay",
+        "radius_decay_interval", "step_size", "step_size_schedule", "step_size_scale",
+        "step_size_min", "step_size_decay", "step_size_decay_interval", "step_decay",
+        "gamma", "rho", "rho_k", "lambda", "known_fraction", "batch_initial",
+        "total_batch", "batch_increment", "directions_per_update", "cycle_length",
+    }
+    unknown = set(params) - allowed
+    if unknown:
+        raise ValueError(f"Unsupported PISO parameters: {sorted(unknown)}")
 
 
 def step_size(params: dict, iteration: int, sample_count: int) -> float:
@@ -170,64 +171,3 @@ def validate_two_level(params: dict[str, Any], method_name: str) -> None:
     if not 0.0 <= mixing <= 1.0:
         raise ValueError(f"{method_name} lambda must lie in [0, 1]")
 
-
-def two_level_residual(
-    slow_residual: np.ndarray,
-    fast_residual: np.ndarray,
-    mixing: float,
-) -> np.ndarray:
-    return (1.0 - mixing) * slow_residual + mixing * fast_residual
-
-
-def clip_vector(vector: np.ndarray, max_norm: float | None) -> np.ndarray:
-    array = np.asarray(vector, dtype=float)
-    if max_norm is None:
-        return array
-    limit = float(max_norm)
-    norm = float(np.linalg.norm(array))
-    if norm == 0.0 or norm <= limit:
-        return array
-    return array * (limit / norm)
-
-
-def update_residual_rls(
-    state: dict[str, Any],
-    directions: list[np.ndarray],
-    derivatives: list[float],
-    *,
-    forgetting: float,
-    ridge: float,
-    clip_norm: float | None,
-    warmup_directions: int,
-) -> np.ndarray:
-
-
-
-
-
-
-
-
-    gram = np.asarray(state["residual_gram"], dtype=float)
-    rhs = np.asarray(state["residual_rhs"], dtype=float)
-    gram *= float(forgetting)
-    rhs *= float(forgetting)
-    for direction, derivative in zip(directions, derivatives):
-        u = np.asarray(direction, dtype=float)
-        gram += np.outer(u, u)
-        rhs += float(derivative) * u
-
-    dimension = gram.shape[0]
-    estimate = np.linalg.solve(
-        gram + float(ridge) * np.eye(dimension, dtype=float), rhs
-    )
-    estimate = clip_vector(estimate, clip_norm)
-    observations = int(state.get("residual_observations", 0)) + len(directions)
-    confidence = min(1.0, observations / float(max(int(warmup_directions), 1)))
-    estimate *= confidence
-
-    state["residual_gram"] = gram
-    state["residual_rhs"] = rhs
-    state["residual_observations"] = observations
-    state["residual_estimate"] = estimate
-    return estimate
