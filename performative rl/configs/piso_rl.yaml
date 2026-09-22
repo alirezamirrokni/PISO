@@ -65,7 +65,6 @@ methods:
   - GaussianPISO2
   - CyclePISO2
   - PePG
-  - OraclePePG
   VanillaPG:
     step_size: 0.05
     step_size_schedule: inverse_sqrt
@@ -216,13 +215,3 @@ methods:
     batch_increment: 0
     gradient_clip_norm: 0.25
     transition_probability_floor: 1.0e-12
-  OraclePePG:
-    step_size: 2.0
-    step_size_schedule: inverse_sqrt
-    step_size_scale: 100000
-    step_size_min: 0.5
-    equivalent_batch: 100
-    armijo: 0.0001
-    backtrack_factor: 0.5
-    minimum_step: 1.0e-08
-    max_backtracks: 20

@@ -1,5 +1,4 @@
 from .baselines import GZOHS, GZONS, VanillaPG, ZOOG, ZOOGVR, ZOTG
-from .oracle_pepg import OraclePePG
 from .pepg import PePG
 from .piso import CyclePISO, CyclePISO2, GaussianPISO, GaussianPISO2
 
@@ -17,7 +16,6 @@ METHODS = {
         GaussianPISO2,
         CyclePISO2,
         PePG,
-        OraclePePG,
     )
 }
 

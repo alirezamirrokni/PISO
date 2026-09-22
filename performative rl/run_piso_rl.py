@@ -18,8 +18,8 @@ def _parse_seeds(value: str | None) -> list[int] | None:
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Run PISO/PISO², access-matched model-free baselines, sampled "
-            "PePG, and the privileged exact oracle on the performative-RL gridworld."
+            "Run PISO/PISO², access-matched model-free baselines, and sampled "
+            "PePG on the performative-RL gridworld."
         )
     )
     parser.add_argument(

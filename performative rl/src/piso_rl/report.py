@@ -42,7 +42,6 @@ DISPLAY_NAMES = {
     "GaussianPISO2": "GaussianPISO²",
     "CyclePISO2": "CyclePISO²",
     "PePG": "PePG",
-    "OraclePePG": "Exact-oracle PePG",
 }
 
 
@@ -61,7 +60,6 @@ STYLES = {
     "CyclePISO2": {"color": "tab:pink", "marker": "<", "linestyle": "-"},
     "PePG": {"color": "darkorange", "marker": "P", "linestyle": "-"},
     "VanillaPG": {"color": "tab:olive", "marker": ">", "linestyle": "--"},
-    "OraclePePG": {"color": "dimgray", "marker": "D", "linestyle": "--"},
 }
 
 def _write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
@@ -381,7 +379,6 @@ def build_reports(traces: list, config: dict, output_dir: str | Path) -> None:
 
     write_reference_comparison("VanillaPG", "comparison_to_vanilla.csv")
     write_reference_comparison("PePG", "comparison_to_pepg.csv")
-    write_reference_comparison("OraclePePG", "comparison_to_oracle.csv")
 
     runtime_rows = []
     for method in sorted({str(row["method"]) for row in final_rows}):
@@ -447,39 +444,24 @@ def build_reports(traces: list, config: dict, output_dir: str | Path) -> None:
             "real trajectories plus exact reward/transition response derivatives "
             "and exact tabular advantages"
         ),
-        "OraclePePG": (
-            "exact full performative gradient and exact objective values for "
-            "monotone line search"
-        ),
     }
     for method in list(config.get("methods", {}).get("enabled", [])):
-        is_oracle = method == "OraclePePG"
         is_pepg = method == "PePG"
         metadata_rows.append(
             {
                 "method": method,
                 "display_name": DISPLAY_NAMES.get(method, method),
                 "access_class": (
-                    "privileged exact-model oracle"
-                    if is_oracle
-                    else "privileged derivative-aided trajectory method"
+                    "privileged derivative-aided trajectory method"
                     if is_pepg
                     else "model-free diagonal-deployment access"
                 ),
                 "access_details": access_notes.get(method, "trajectory access"),
-                "uses_exact_reward_transition_derivatives": bool(is_oracle or is_pepg),
-                "uses_exact_full_performative_gradient": bool(is_oracle),
-                "uses_exact_objective_line_search": bool(is_oracle),
+                "uses_exact_reward_transition_derivatives": bool(is_pepg),
                 "uses_cross_deployment_queries": False,
-                "primary_budget": (
-                    "trajectory-equivalent update axis; no sampled trajectories"
-                    if is_oracle
-                    else "real environment trajectories"
-                ),
+                "primary_budget": "real environment trajectories",
                 "interpretation": (
-                    "privileged upper-information reference, not a sample-matched method"
-                    if is_oracle
-                    else "sample-budget PePG with privileged exact response derivatives"
+                    "sample-budget PePG with privileged exact response derivatives"
                     if is_pepg
                     else "included in the model-free sample-budget comparison"
                 ),
@@ -493,8 +475,6 @@ def build_reports(traces: list, config: dict, output_dir: str | Path) -> None:
             "access_class",
             "access_details",
             "uses_exact_reward_transition_derivatives",
-            "uses_exact_full_performative_gradient",
-            "uses_exact_objective_line_search",
             "uses_cross_deployment_queries",
             "primary_budget",
             "interpretation",
