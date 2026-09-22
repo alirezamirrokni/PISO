@@ -75,137 +75,137 @@ methods:
     batch_increment: 0
     gradient_clip_norm: 0.25
   ZO_TG:
-    radius: 1.0
+    radius: 4.0
     radius_schedule: inverse_sqrt
     radius_scale: 200000
-    radius_min: 0.5
-    step_size: 0.1
+    radius_min: 3.0
+    step_size: 0.4
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.03
+    step_size_min: 0.2
     batch_initial: 50
     batch_increment: 0
     gradient_clip_norm: 0.25
   ZO_OG:
-    radius: 1.0
-    radius_schedule: inverse_sqrt
+    radius: 0.5
+    radius_schedule: constant
     radius_scale: 200000
     radius_min: 0.5
-    step_size: 0.02
+    step_size: 0.08
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.005
+    step_size_min: 0.04
     batch_initial: 100
     batch_increment: 0
     baseline_decay: 0.98
-    gradient_clip_norm: 0.25
+    gradient_clip_norm: null
   ZO_OGVR:
-    radius: 1.0
+    radius: 2.0
     radius_schedule: inverse_sqrt
-    radius_scale: 200000
+    radius_scale: 800000
     radius_min: 0.5
-    step_size: 0.02
-    step_size_schedule: inverse_sqrt
+    step_size: 0.16
+    step_size_schedule: constant
     step_size_scale: 100000
     step_size_min: 0.005
     batch_initial: 100
     batch_increment: 0
     initial_baseline_batch: 100
     history_window: 10
-    distance_weight: 0.1
-    gradient_clip_norm: 0.25
+    distance_weight: 0.0
+    gradient_clip_norm: null
   GZO_NS:
-    radius: 1.0
+    radius: 4.0
     radius_schedule: inverse_sqrt
-    radius_scale: 200000
-    radius_min: 0.5
-    step_size: 0.1
-    step_size_schedule: inverse_sqrt
+    radius_scale: 50000
+    radius_min: 1.0
+    step_size: 0.4
+    step_size_schedule: constant
     step_size_scale: 100000
     step_size_min: 0.03
-    batch_initial: 34
+    batch_initial: 20
     total_batch: 100
-    known_batch: 34
+    known_batch: 20
     batch_increment: 0
     alpha: 0.9
-    gradient_clip_norm: 0.25
+    gradient_clip_norm: 1.0
   GZO_HS:
-    radius: 1.0
-    radius_schedule: inverse_sqrt
-    radius_scale: 200000
-    radius_min: 0.5
-    step_size: 0.1
-    step_size_schedule: inverse_sqrt
-    step_size_scale: 100000
-    step_size_min: 0.03
-    alpha: 0.9
-    window: 10
-    batch_initial: 50
-    batch_increment: 0
-    gradient_clip_norm: 0.25
-  GaussianPISO:
     radius: 2.0
     radius_schedule: constant
-    step_size: 0.8
+    radius_scale: 200000
+    radius_min: 0.5
+    step_size: 0.4
+    step_size_schedule: inverse_sqrt
+    step_size_scale: 25000
+    step_size_min: 0.04
+    alpha: 0.9
+    window: 1
+    batch_initial: 50
+    batch_increment: 0
+    gradient_clip_norm: null
+  GaussianPISO:
+    radius: 1.5
+    radius_schedule: constant
+    step_size: 1.8
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.02
-    gamma: 1.0
-    rho: 0.97
-    rho_k: 0.0
-    known_fraction: 0.34
-    batch_initial: 34
+    step_size_min: 1.0
+    gamma: 0.75
+    rho: 0.997
+    rho_k: 0.9
+    known_fraction: 0.5
+    batch_initial: 50
     total_batch: 100
     batch_increment: 0
     directions_per_update: 1
   CyclePISO:
-    radius: 2.0
+    radius: 1.5
     radius_schedule: constant
-    step_size: 0.8
+    step_size: 1.8
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.02
-    gamma: 1.0
-    rho: 0.97
-    rho_k: 0.0
-    known_fraction: 0.34
-    batch_initial: 34
+    step_size_min: 1.0
+    gamma: 0.75
+    rho: 0.997
+    rho_k: 0.9
+    known_fraction: 0.5
+    batch_initial: 50
     total_batch: 100
     batch_increment: 0
     directions_per_update: 1
-    cycle_length: 16
+    cycle_length: 24
   GaussianPISO2:
-    radius: 2.0
+    radius: 1.5
     radius_schedule: constant
-    step_size: 0.8
+    step_size: 1.8
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.02
+    step_size_min: 1.0
     gamma: 1.0
-    rho: 0.97
-    rho_k: 0.0
-    known_fraction: 0.34
-    batch_initial: 34
+    rho: 0.997
+    rho_k: 0.9
+    known_fraction: 0.5
+    batch_initial: 50
     total_batch: 100
     batch_increment: 0
     directions_per_update: 1
-    lambda: 0.03
+    lambda: 0.01
   CyclePISO2:
-    radius: 2.0
+    radius: 1.5
     radius_schedule: constant
-    step_size: 0.8
+    step_size: 1.8
     step_size_schedule: inverse_sqrt
     step_size_scale: 100000
-    step_size_min: 0.02
+    step_size_min: 1.0
     gamma: 1.0
-    rho: 0.97
-    rho_k: 0.0
-    known_fraction: 0.34
-    batch_initial: 34
+    rho: 0.997
+    rho_k: 0.9
+    known_fraction: 0.5
+    batch_initial: 50
     total_batch: 100
     batch_increment: 0
     directions_per_update: 1
-    lambda: 0.03
+    lambda: 0.01
     cycle_length: 16
   PePG:
     step_size: 0.5

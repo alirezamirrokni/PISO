@@ -97,7 +97,7 @@ methods:
     rho: 0.98
     alpha: 0.98
     cycle_length: 10
-    unknown_clip_ratio: 1.0
+    unknown_clip_ratio: 0.0
     known_norm_floor: 1.0
     innovation_clip: 0.0
     update_clip: 0.0
@@ -111,7 +111,7 @@ methods:
     rho: 0.98
     alpha: 0.98
     cycle_length: 10
-    unknown_clip_ratio: 1.0
+    unknown_clip_ratio: 0.0
     known_norm_floor: 1.0
     innovation_clip: 0.0
     update_clip: 0.0
@@ -126,7 +126,7 @@ methods:
     lambda: 0.1
     alpha: 0.98
     cycle_length: 10
-    unknown_clip_ratio: 1.0
+    unknown_clip_ratio: 0.0
     known_norm_floor: 1.0
     innovation_clip: 0.0
     update_clip: 0.0
@@ -141,7 +141,7 @@ methods:
     lambda: 0.1
     alpha: 0.98
     cycle_length: 10
-    unknown_clip_ratio: 1.0
+    unknown_clip_ratio: 0.0
     known_norm_floor: 1.0
     innovation_clip: 0.0
     update_clip: 0.0
