@@ -42,7 +42,6 @@ def _warm_from_pair(
 
 class ZerothOrderBase(BaseMethod):
 
-
     def radius(self, iteration: int) -> float:
         radius = float(self.params.get("radius", self.params.get("mu", 0.10)))
         schedule = str(self.params.get("radius_schedule", "constant"))
@@ -88,13 +87,6 @@ class ZerothOrderBase(BaseMethod):
 
 class ZOTG(ZerothOrderBase):
 
-
-
-
-
-
-
-
     name = "ZO_TG"
 
     def run(
@@ -133,7 +125,6 @@ class ZOTG(ZerothOrderBase):
                 "zo-tg-direction",
                 dimension,
             )
-            
             
             mu = self.radius(iteration) / np.sqrt(float(dimension))
             plus_x = x + mu * direction
@@ -177,7 +168,6 @@ class ZOTG(ZerothOrderBase):
 
 
 class ZOOG(ZerothOrderBase):
-
 
     name = "ZO_OG"
 
@@ -251,14 +241,6 @@ class ZOOG(ZerothOrderBase):
 
 
 class ZOOGVR(ZerothOrderBase):
-
-
-
-
-
-
-
-
 
     name = "ZO_OGVR"
 
@@ -372,7 +354,6 @@ class ZOOGVR(ZerothOrderBase):
 
 class GuidedZerothOrderBase(ZerothOrderBase):
 
-
     def guided_direction(
         self,
         base_seed: int,
@@ -389,8 +370,6 @@ class GuidedZerothOrderBase(ZerothOrderBase):
         normalized_guide = _normalized(guide)
         if float(np.linalg.norm(normalized_guide)) <= 1.0e-15:
             
-            
-            
             return rng.normal(size=dimension) / np.sqrt(float(dimension))
         return (
             np.sqrt(alpha / float(dimension)) * rng.normal(size=dimension)
@@ -405,7 +384,6 @@ class GuidedZerothOrderBase(ZerothOrderBase):
 
 
 class GZONS(GuidedZerothOrderBase):
-
 
     name = "GZO_NS"
 
@@ -462,7 +440,6 @@ class GZONS(GuidedZerothOrderBase):
                 - problem.objective(minus_x, minus_y)
             ) / (2.0 * mu)
             
-            
             gradient = float(derivative) * direction
             x = self.apply_update(problem, x, gradient, iteration)
             alpha = self.next_alpha(alpha)
@@ -497,7 +474,6 @@ class GZONS(GuidedZerothOrderBase):
 
 
 class GZOHS(GuidedZerothOrderBase):
-
 
     name = "GZO_HS"
 

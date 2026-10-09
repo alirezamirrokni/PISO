@@ -60,11 +60,6 @@ class RoutingInstance:
             outgoing.sort(key=lambda item: (item[0], item[1]))
         self._adjacency = adjacency
 
-        
-        
-        
-        
-        
         queue = [node for node in range(self.n_nodes) if indegree[node] == 0]
         heapq.heapify(queue)
         topological_order: list[int] = []
@@ -105,11 +100,6 @@ class RoutingInstance:
 
     def _shortest_path_edges(self, weights: np.ndarray, source: int, target: int) -> list[int]:
 
-
-
-
-
-
         weights = np.asarray(weights, dtype=float)
         if weights.shape != (self.dimension,):
             raise ValueError(
@@ -134,7 +124,6 @@ class RoutingInstance:
             for v, edge in self._adjacency[u]:
                 candidate = distance[u] + float(weights[edge])
                 
-                
                 if candidate < distance[v] - 1.0e-14:
                     distance[v] = candidate
                     previous_edge[v] = edge
@@ -154,7 +143,6 @@ class RoutingInstance:
             path.append(edge)
             node = int(self.tails[edge])
 
-        
         raise RuntimeError("path reconstruction exceeded the number of graph nodes")
 
     def _all_or_nothing(self, toll: np.ndarray, aggregate_flow: np.ndarray) -> np.ndarray:
@@ -220,15 +208,6 @@ class RoutingInstance:
 
 def generate_routing_instances(config: dict, seed: int) -> list[RoutingInstance]:
 
-
-
-
-
-
-
-
-
-
     exp = config["experiment"]
     problem = config["problem"]
     count = int(exp["instances"])
@@ -243,7 +222,6 @@ def generate_routing_instances(config: dict, seed: int) -> list[RoutingInstance]
             )
         )
 
-        
         maximum_edges = min(
             int(problem["edges_max"]),
             n_nodes * (n_nodes - 1) // 2,
@@ -256,7 +234,6 @@ def generate_routing_instances(config: dict, seed: int) -> list[RoutingInstance]
 
         permutation = np.asarray(rng.permutation(n_nodes), dtype=np.int64)
 
-        
         edge_set: set[tuple[int, int]] = {
             (int(permutation[index]), int(permutation[index + 1]))
             for index in range(n_nodes - 1)
@@ -287,8 +264,6 @@ def generate_routing_instances(config: dict, seed: int) -> list[RoutingInstance]
             )
         )
 
-        
-        
         origin_positions = rng.integers(0, n_nodes - 1, size=n_groups)
         destination_positions = np.asarray(
             [rng.integers(int(position) + 1, n_nodes) for position in origin_positions],

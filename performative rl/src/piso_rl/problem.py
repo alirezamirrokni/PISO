@@ -23,13 +23,6 @@ class ProblemMetrics:
 
 class PerformativeRLProblem:
 
-
-
-
-
-
-
-
     def __init__(
         self,
         *,
@@ -133,12 +126,7 @@ class PerformativeRLProblem:
         self._policy_probabilities = probabilities
         return probabilities
 
-
     def validate_policy_probabilities(self, probabilities: np.ndarray) -> np.ndarray:
-
-
-
-
 
         array = np.asarray(probabilities, dtype=float)
         expected_shape = (self.env.dim, len(self.env.agents[1].actions))
@@ -175,14 +163,6 @@ class PerformativeRLProblem:
         return np.asarray(probabilities, dtype=float)
 
     def follower_policy(self, environment_theta: np.ndarray) -> np.ndarray:
-
-
-
-
-
-
-
-
 
         environment_theta = self._validate_theta(environment_theta)
         return self.follower_policy_from_probabilities(
@@ -222,10 +202,6 @@ class PerformativeRLProblem:
                 next_states = self.env._joint_next[:, action, follower_action]
                 transitions[states, action, next_states] += follower[:, follower_action]
 
-        
-        
-        
-        
         terminal = int(self.env.terminal_state_id)
         nonterminal = np.asarray(
             [state for state in range(self.env.dim) if state != terminal],
@@ -307,7 +283,6 @@ class PerformativeRLProblem:
         )
         return probabilities, rewards, transitions, occupancy
 
-    
     def deploy(
         self, theta: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -426,14 +401,6 @@ class PerformativeRLProblem:
         rng: np.random.RandomState,
     ) -> tuple[np.ndarray, list[Trajectory], np.ndarray, list[Trajectory]]:
 
-
-
-
-
-
-
-
-
         count = int(count)
         if count <= 0:
             raise ValueError("trajectory count must be positive")
@@ -478,7 +445,6 @@ class PerformativeRLProblem:
             -minus_returns,
             minus_trajectories,
         )
-
 
     def sample_observations(
         self,
@@ -529,7 +495,6 @@ class PerformativeRLProblem:
         if not trajectories:
             raise ValueError("at least one trajectory is required")
 
-        
         probabilities = self.policy(theta)
         return np.stack(
             [

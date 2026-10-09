@@ -31,8 +31,6 @@ def _source_hash(*objects: object) -> str:
     return digest.hexdigest()
 
 
-
-
 _RETAINED_PISO_METHODS = {
     "GaussianPISO",
     "CyclePISO",

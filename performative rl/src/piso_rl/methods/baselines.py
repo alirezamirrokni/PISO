@@ -40,15 +40,6 @@ def _zo_ogvr_baseline(
     window: int,
 ) -> float:
 
-
-
-
-
-
-
-
-
-
     if int(window) <= 0:
         raise ValueError("ZO_OGVR history_window must be positive")
     if float(distance_weight) < 0.0 or not np.isfinite(distance_weight):
@@ -80,7 +71,6 @@ def _zo_ogvr_baseline(
 
 
 class VanillaPG:
-
 
     name = "VanillaPG"
     seed_alias = "VanillaPG"
@@ -221,15 +211,6 @@ class ZOOG:
 
 class ZOOGVR:
 
-
-
-
-
-
-
-
-
-
     name = "ZO_OGVR"
     seed_alias = "ZO_OGVR"
 
@@ -262,9 +243,6 @@ class ZOOGVR:
         state.setdefault("vr_baseline", None)
         state.setdefault("vr_history", [])
 
-        
-        
-        
         if state["vr_baseline"] is None:
             initial_count = int(
                 self.p.get("initial_baseline_batch", self.p["batch_initial"])

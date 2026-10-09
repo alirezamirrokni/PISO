@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 
 
-
 plt.rcParams.update(
     {
         "font.size": 14.0,
@@ -43,11 +42,9 @@ DEFAULT_STYLES: dict[str, dict[str, Any]] = {
     "GaussianPISO2": {"color": "tab:brown", "marker": "h", "linestyle": "-", "linewidth": 2.20, "label": "GaussianPISO²"},
     "CyclePISO2": {"color": "tab:pink", "marker": "<", "linestyle": "-", "linewidth": 2.20, "label": "CyclePISO²"},
     
-    
     "PZOS": {"color": "darkorange", "marker": "P", "linestyle": "-", "linewidth": 2.35, "label": "PZOS"},
     "ZOS": {"color": "tab:olive", "marker": ">", "linestyle": "--", "linewidth": 2.35, "label": "ZOS"},
 }
-
 
 
 def _style(method: str) -> dict[str, Any]:
@@ -91,9 +88,6 @@ def _legend_below(
         borderaxespad=0.0,
     )
     
-    
-    
-    
     return max(0.050, min(0.120, 0.58 / float(fig.get_figheight())))
 
 
@@ -114,7 +108,6 @@ def _format_axis(
     for tick in [*axis.get_xticklabels(), *axis.get_yticklabels()]:
         tick.set_fontsize(tick_size)
         tick.set_fontweight("bold")
-
 
 
 def _normalize_per_instance(raw: pd.DataFrame, reference_methods: list[str]) -> pd.DataFrame:
@@ -245,7 +238,6 @@ def _routing_pairwise_data(
     return pd.DataFrame(rows)
 
 
-
 def _plot_routing_pairwise(
     normalized: pd.DataFrame,
     snapshots: list[int],
@@ -345,7 +337,6 @@ def _plot_routing_pairwise(
     fig.savefig(destination.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(fig)
     return data
-
 
 
 def _plot_security_dimension(

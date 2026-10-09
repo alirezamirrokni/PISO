@@ -27,7 +27,6 @@ except ImportError:
 
 class _FallbackProgress:
 
-
     def __init__(self, total: int, desc: str, unit: str = "run") -> None:
         self.total = max(int(total), 0)
         self.desc = desc
@@ -107,12 +106,6 @@ def _family_components(family: str):
 def _run_one_method(
     task: tuple[str, dict[str, Any], str, int, str],
 ) -> tuple[int, str, bool]:
-
-
-
-
-
-
 
     family, config, output_text, instance_id, method_name = task
     output_dir = Path(output_text)

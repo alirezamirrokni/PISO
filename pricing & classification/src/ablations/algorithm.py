@@ -45,8 +45,6 @@ def _step_size(params: dict[str, Any], iteration: int) -> float:
 def _radius(params: dict[str, Any], iteration: int, dimension: int) -> float:
     value = float(params["radius"]) * float(params["radius_decay"]) ** int(iteration)
     
-    
-    
     return value / np.sqrt(float(dimension))
 
 
@@ -63,11 +61,6 @@ def allocate_budget(
     use_residual: bool,
     directions_per_step: int,
 ) -> tuple[int, int, int]:
-
-
-
-
-
 
     total = int(total)
     directions_per_step = int(directions_per_step)
@@ -314,7 +307,6 @@ def run_piso_variant(
             mode = str(params["residual_mode"])
             rho = float(params["rho"])
             if mode == "recursive":
-                # Sketch the tracking error, rather than averaging fresh targets.
                 control = gamma * known + momentum
                 innovation_values = [
                     float(derivative - np.dot(control, direction))
@@ -325,8 +317,6 @@ def run_piso_variant(
                      in zip(innovation_values, scores)], axis=0,
                 )
             elif mode == "fresh_centered":
-                
-                
                 
                 control = gamma * known
                 innovation_values = [

@@ -161,8 +161,6 @@ def load_classification_dataset(
     if missing:
         raise ValueError(f"Unexpected credit dataset schema; missing columns: {missing}")
 
-    
-    
     frame = frame.loc[:, EXPECTED_COLUMNS].copy()
     labels = frame["NoDefaultNextMonth"].to_numpy(dtype=float)
     labels = np.where(labels > 0.0, 1.0, 0.0)
@@ -245,7 +243,6 @@ class StrategicClassificationProblem:
 
         margin = values @ weights + intercept
         
-        
         movement_cost = np.square(np.minimum(margin, 0.0)) / norm_sq
         should_react = (margin < 0.0) & (
             movement_cost < float(self.spec.reward) / self.tau
@@ -274,7 +271,6 @@ class StrategicClassificationProblem:
             "labels": np.asarray(labels, dtype=float),
         }
 
-    
     def sample_demands(
         self,
         x: np.ndarray,

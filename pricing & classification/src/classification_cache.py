@@ -56,14 +56,7 @@ def _hash_classification_problem_compat(
     path: Path,
 ) -> None:
 
-
-
-
-
-
     content = path.read_text(encoding="utf-8")
-    
-    
     
     content = content.replace(
         "train_loss, _, train_predictions = self._split_metrics(",
@@ -180,11 +173,6 @@ def build_classification_method_fingerprint(
 
 
 class ClassificationCacheManager:
-
-
-
-
-
 
     def __init__(
         self,

@@ -44,10 +44,6 @@ DISPLAY_NAMES: dict[str, str] = {
 }
 
 
-
-
-
-
 def write_outputs(
     results: list[dict],
     methods: list[str],
@@ -61,12 +57,6 @@ def write_outputs(
     post_drop_tail_fraction: float = 0.25,
     final_window_fraction: float = 0.30,
 ) -> None:
-
-
-
-
-
-
 
     selected_run_number = int(figure_run) + 1
 
@@ -136,10 +126,6 @@ def write_outputs(
     )
 
 
-
-
-
-
 def _build_final_summary(final: pd.DataFrame, methods: list[str]) -> pd.DataFrame:
 
     summary_rows: list[dict[str, object]] = []
@@ -182,12 +168,6 @@ def _build_final_summary(final: pd.DataFrame, methods: list[str]) -> pd.DataFram
 
 
 def _aggregate_trace_statistics(raw: pd.DataFrame) -> pd.DataFrame:
-
-
-
-
-
-
 
     output_columns = [
         "week_id",
@@ -343,10 +323,6 @@ def _aggregate_trace_statistics(raw: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=output_columns)
 
 
-
-
-
-
 def _finite_values(values: pd.Series | np.ndarray) -> np.ndarray:
     finite = np.asarray(values, dtype=float)
     return finite[np.isfinite(finite)]
@@ -473,11 +449,6 @@ def _axis_limits(
     return y_min - margin, y_max + margin
 
 
-
-
-
-
-
 def _format_axis(axis: object) -> None:
     axis.xaxis.label.set_size(17.0)
     axis.yaxis.label.set_size(17.0)
@@ -562,7 +533,6 @@ def _plot(
 
             legend_handles.setdefault(method, line)
 
-        
         limit_frame = _uncertainty_limit_frame(plotted_frame)
 
         if y_limit_mode == "post_drop":

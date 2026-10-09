@@ -10,7 +10,6 @@ class Agent:
 
     def _get_probs(self, state_id):
 
-
         return self.policy._get_probs(state_id)
 
     def take_action(self, state_id, rng):

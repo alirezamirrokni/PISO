@@ -20,21 +20,6 @@ from .common import (
 
 class PePG:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     name = "PePG"
     seed_alias = "PePG"
 

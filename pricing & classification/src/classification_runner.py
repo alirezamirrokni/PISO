@@ -106,7 +106,6 @@ def run_experiment(
     progress = ExperimentProgress(pair_count, simulations, context.max_samples)
     try:
         
-        
         for tau in taus:
             for run_index in range(simulations):
                 problem = StrategicClassificationProblem(dataset, tau, spec)

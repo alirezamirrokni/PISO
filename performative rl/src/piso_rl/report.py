@@ -45,9 +45,6 @@ DISPLAY_NAMES = {
 }
 
 
-
-
-
 STYLES = {
     "GZO_NS": {"color": "blue", "marker": "o", "linestyle": "-"},
     "GZO_HS": {"color": "cyan", "marker": "s", "linestyle": "-"},
@@ -82,11 +79,6 @@ def _statistics(values: list[float]) -> tuple[float, float, float, int]:
 
 def _moving_average(values: np.ndarray, window: int) -> np.ndarray:
 
-
-
-
-
-
     values = np.asarray(values, dtype=float)
     if window <= 1 or values.size <= 1:
         return values.copy()
@@ -104,13 +96,6 @@ def _bootstrap_mean_interval(
     seed: int,
     resamples: int = 4000,
 ) -> tuple[float, float]:
-
-
-
-
-
-
-
 
     array = np.asarray(values, dtype=float)
     if array.size == 0:
@@ -228,7 +213,6 @@ def build_reports(traces: list, config: dict, output_dir: str | Path) -> None:
         )
         change_mean, change_sd, change_se, change_n = _statistics(values["change"])
         
-        
         bootstrap_seed = sum(
             (index + 1) * ord(character)
             for index, character in enumerate(f"{method}:{samples}")
@@ -321,10 +305,6 @@ def build_reports(traces: list, config: dict, output_dir: str | Path) -> None:
         summary_rows,
     )
 
-    
-    
-    
-    
     def write_reference_comparison(reference_method: str, filename: str) -> None:
         reference = next(
             (row for row in summary_rows if row["method"] == reference_method),
@@ -553,7 +533,6 @@ def _plot(
         methods = available_methods
     else:
         
-        
         methods = [
             method for method in plotting_methods if method in available_methods
         ]
@@ -563,8 +542,6 @@ def _plot(
             "none of report.plotting_methods are present in figure_data.csv"
         )
 
-    
-    
     max_samples = max(int(row["samples"]) for row in rows if row["method"] in methods)
     fig, axes = plt.subplots(1, 2, figsize=(16.8, 6.6))
     return_axis, stability_axis = axes
@@ -602,8 +579,6 @@ def _plot(
         marker = style.get("marker")
         markevery = max(1, int(math.ceil(len(iterations) / 10))) if marker else None
 
-        
-        
         if show_raw_curves:
             return_axis.plot(
                 iterations,
@@ -685,8 +660,6 @@ def _plot(
     fig.savefig(output / "figure.pdf", bbox_inches="tight")
     plt.close(fig)
 
-    
-    
     absolute_fig, absolute_axis = plt.subplots(figsize=(16.8, 6.4))
     for method in methods:
         selected = sorted(

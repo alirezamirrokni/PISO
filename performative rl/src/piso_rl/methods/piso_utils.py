@@ -63,12 +63,6 @@ def allocate_batches(
     params: dict[str, Any], iteration_batch: int
 ) -> tuple[int, int, int]:
 
-
-
-
-
-
-
     total = int(params.get("total_batch", 3 * int(iteration_batch)))
     if total < 3:
         raise ValueError("PISO total_batch must be at least 3")

@@ -164,7 +164,6 @@ def run_experiment(
     master_seed = int(experiment.get("master_seed", 2026))
     n_jobs = int(jobs if jobs is not None else experiment.get("n_jobs", 1))
 
-    
     experiment["seeds"] = list(run_seeds)
     experiment.setdefault("problem_seed", 0)
     experiment.setdefault("vary_problem_by_seed", False)

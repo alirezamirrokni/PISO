@@ -72,7 +72,6 @@ class Gridworld:
         self.action_space[1] = self.moves
         self.agents[1] = Agent(1, self.action_space[1])
         
-        
         self.action_space[2] = self.interventions
         self.agents[2] = Agent(2, self.action_space[2])
         
@@ -94,13 +93,9 @@ class Gridworld:
         
         self.rng = np.random.default_rng(seed)
 
-        
-        
-        
         self._build_fast_tables()
 
         self.reset()
-
 
     def _build_fast_tables(self):
 
@@ -232,7 +227,6 @@ class Gridworld:
 
         gamma = self.gamma
 
-        
         U = np.zeros(self.dim, dtype="float64")
         while True:
             U_old = copy.deepcopy(U)
@@ -258,7 +252,6 @@ class Gridworld:
 
         gamma = self.gamma
 
-        
         Q = np.zeros(shape=(self.dim, len(self.moves)), dtype="float64")
         for s, move in itertools.product(self.state_ids, self.moves):
             if self.is_terminal(s):
@@ -271,8 +264,6 @@ class Gridworld:
         return Q
 
     def get_mnext_state(self, state_id, actions):
-
-
 
         for agent in self.agents.values():
             assert actions[agent.id] in agent.actions, (
@@ -298,7 +289,6 @@ class Gridworld:
 
         gamma = self.gamma
 
-        
         U = np.zeros(self.dim, dtype="float64")
         while True:
             U_old = copy.deepcopy(U)
@@ -326,7 +316,6 @@ class Gridworld:
 
         gamma = self.gamma
 
-        
         U = np.zeros(self.dim, dtype="float64")
         while True:
             U_old = copy.deepcopy(U)
@@ -355,7 +344,6 @@ class Gridworld:
 
         gamma = self.gamma
 
-        
         Q = np.zeros(shape=(self.dim, len(agent.actions)), dtype="float64")
         for s, a in itertools.product(self.state_ids, agent.actions):
             if self.is_terminal(s):
@@ -371,10 +359,6 @@ class Gridworld:
         return Q
 
     def _get_RT(self):
-
-
-
-
 
         if not self.sampling:
             return self._get_exact_RT()
@@ -410,7 +394,6 @@ class Gridworld:
         agent = self.agents[1]
         n_sample = self.n_sample
 
-        
         T_tot = np.zeros(
             shape=(self.dim, len(agent.actions), self.dim), dtype="float64"
         )
@@ -427,7 +410,6 @@ class Gridworld:
                 T_tot[s, a, s_pr] += 1
                 R_tot[s, a] += r
 
-        
         T_hat = np.zeros(
             shape=(self.dim, len(agent.actions), self.dim), dtype="float64"
         )
@@ -482,11 +464,9 @@ class Gridworld:
 
     def is_terminal(self, state_id):
 
-
         return bool(state_id == self.terminal_state_id)
 
     def intervention_happened(self, actions):
-
 
         return bool(self.interventions_mapping[actions[2]])
 
@@ -532,7 +512,6 @@ class Gridworld:
             else:
                 new_grid[i, j] = rng.choice(grid_values)
 
-        
         new_grid[-1, -1] = self.grid[-1, -1]
 
         return new_grid
@@ -544,7 +523,6 @@ class Gridworld:
         rho = self.rho
         rng = self.rng
 
-        
         trajectory = []
         n_steps = 0
         
@@ -569,8 +547,6 @@ class Gridworld:
 
     def _get_policy_array(self, agent):
 
-
-
         pi = np.zeros(shape=(self.dim, len(agent.actions)), dtype="float64")
 
         for s in self.state_ids:
@@ -584,14 +560,12 @@ class Gridworld:
 
         agents = self.agents
 
-        
         agent = agents[1]
 
         U_star = self.value_iteration(agent)
         Q_star = self._get_Q(U_star, agent)
         agent.policy = Eps_Greedy_Policy(agent.actions, Q_star)
 
-        
         agent = agents[2]
 
         agent.policy = self.response_model(agents)
@@ -621,8 +595,6 @@ class Gridworld:
         return Tabular(agent.actions, probabilities)
 
     def _get_env_vis(self):
-
-
 
         agent = self.agents[2]
         grid_shape = self.grid.shape

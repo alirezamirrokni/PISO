@@ -63,10 +63,6 @@ def _hash_file(
     replacements: tuple[tuple[bytes, bytes], ...] = (),
 ) -> None:
 
-
-
-
-
     label = logical_path or path.relative_to(project_root).as_posix()
     content = path.read_bytes()
     for current, legacy in replacements:
@@ -76,11 +72,6 @@ def _hash_file(
 
 
 def build_run_fingerprint(project_root: Path, config: dict[str, Any]) -> str:
-
-
-
-
-
 
     digest = hashlib.sha256()
     _hash_json(digest, config)
@@ -120,10 +111,6 @@ def build_method_fingerprint(
     week_id: str,
     method: str,
 ) -> str:
-
-
-
-
 
     experiment = config["experiment"]
     digest = hashlib.sha256()
@@ -471,11 +458,6 @@ def _method_candidates(
     configured_methods: list[str],
 ) -> list[Path]:
 
-
-
-
-
-
     ordered = sorted(configured_methods, key=len, reverse=True)
     candidates: list[Path] = []
     for path in folder.glob("*.csv"):
@@ -489,7 +471,6 @@ def _method_candidates(
 
 
 class ProblemCache:
-
 
     def __init__(self, path: Path, project_root: Path, config: dict[str, Any]) -> None:
         self.path = path
@@ -569,7 +550,6 @@ class ProblemCache:
 
 class CacheManager:
 
-
     def __init__(
         self,
         output_dir: Path,
@@ -625,8 +605,6 @@ class CacheManager:
             filename = f"{_method_tag(method, method_params)}_{self.run_tag}.csv"
             path = folder / filename
 
-            
-            
             for candidate in _method_candidates(
                 folder, method, list(self.config["methods"])
             ):
@@ -656,10 +634,6 @@ class CacheManager:
         return JobCache(self._group(week_id, method), run_index, variant)
 
     def _all_method_rows_complete(self) -> bool:
-
-
-
-
 
         simulations = int(self.config["experiment"]["simulations"])
         for week_value in self.config["experiment"]["weeks"]:

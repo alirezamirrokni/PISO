@@ -8,13 +8,6 @@ import numpy as np
 @dataclass(frozen=True)
 class OracleModel:
 
-
-
-
-
-
-
-
     policy: np.ndarray
     follower_policy: np.ndarray
     rewards: np.ndarray
@@ -48,13 +41,6 @@ def _follower_q_jacobian(
     response_tolerance: float,
     tie_tolerance: float,
 ) -> tuple[np.ndarray, np.ndarray, float]:
-
-
-
-
-
-
-
 
     env = problem.env
     q_value = env._best_response_q_vectorized(
@@ -109,7 +95,6 @@ def _follower_q_jacobian(
                     * principal_policy[state, action]
                 )
 
-    
     value_jacobian = np.linalg.solve(
         np.eye(num_states, dtype=np.float64) - transition_matrix,
         rhs,
@@ -152,7 +137,6 @@ def build_oracle_model(
     response_tolerance: float = 1e-5,
     tie_tolerance: float = 1e-10,
 ) -> OracleModel:
-
 
     theta = problem._validate_theta(theta)
     env = problem.env

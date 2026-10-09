@@ -36,7 +36,6 @@ def load_pickle(path: Path) -> Any | None:
             return pickle.load(handle)
     except (OSError, EOFError, pickle.UnpicklingError, AttributeError, ValueError):
         
-        
         return None
 
 
@@ -69,9 +68,6 @@ class JobCache:
         if not self._valid(payload):
             return None
 
-        
-        
-        
         if payload.get("fingerprint") != self.fingerprint:
             atomic_pickle(
                 path,

@@ -187,8 +187,6 @@ def _plot(
     taus = sorted(aggregate["tau"].unique())
     if len(taus) == 5:
         
-        
-        
         figure = plt.figure(figsize=(17.2, 9.4))
         grid = figure.add_gridspec(2, 6)
         axes_list = [

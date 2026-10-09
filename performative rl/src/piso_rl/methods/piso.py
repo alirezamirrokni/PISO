@@ -9,7 +9,6 @@ from .piso_utils import (allocate_batches, haar_frame, known_gradient, radius,
 
 
 class _BasePISO:
-    """Centered Algorithm 1; lambda mixes the fresh residual and updated state."""
 
     variant = "gaussian"
     two_level = False

@@ -41,7 +41,6 @@ class PZOS(BaseMethod):
 
         for iteration in range(iteration_start, iterations):
             
-            
             calls += 1
             direction = self.direction(base_seed, problem.family, instance_id, iteration, dimension)
             plus_y, plus_warm = problem.response(x + mu * direction, current_warm)

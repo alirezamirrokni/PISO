@@ -23,7 +23,6 @@ class RunProgress:
 
 class ExperimentProgress:
 
-
     def __init__(self, total_pairs: int, simulations: int, max_samples: int) -> None:
         self.total_pairs = int(total_pairs)
         self.simulations = int(simulations)

@@ -56,7 +56,6 @@ class RunCache:
         self._runtime_base = 0.0
         self.checkpoint_interval = 1
 
-
     def start_timing(self) -> None:
         saved = self.load_progress()
         base = 0.0

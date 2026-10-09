@@ -43,13 +43,6 @@ def scheduled_value(
     legacy_decay_key: str | None = None,
 ) -> float:
 
-
-
-
-
-
-
-
     initial = float(params[name])
     if not np.isfinite(initial) or initial <= 0.0:
         raise ValueError(f"{name} must be finite and positive")
@@ -109,7 +102,6 @@ def clip_gradient(gradient: np.ndarray, max_norm: float | None) -> np.ndarray:
 
 
 def normalized_occupancy_shift(current: np.ndarray, previous: np.ndarray) -> float:
-
 
     current_array = np.asarray(current, dtype=float)
     previous_array = np.asarray(previous, dtype=float)

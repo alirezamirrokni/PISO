@@ -127,8 +127,6 @@ def run_experiment(config_path: Path, output_dir: Path, reset_cache: bool = Fals
     progress = ExperimentProgress(total_pairs, simulations, context.max_samples)
     try:
         
-        
-        
         for week_value in experiment["weeks"]:
             week_id = str(week_value).zfill(2)
             for run_index in range(simulations):

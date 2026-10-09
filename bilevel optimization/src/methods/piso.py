@@ -8,7 +8,6 @@ from src.methods.common import BaseMethod, MethodTrace
 from src.util import stable_seed
 
 
-
 def _haar_frame(seed: int, dimension: int, columns: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
     gaussian = rng.normal(size=(dimension, columns))
@@ -28,15 +27,6 @@ def _clip_norm(vector: np.ndarray, maximum: float | None) -> np.ndarray:
 
 
 class PISOBase(BaseMethod):
-
-
-
-
-
-
-
-
-
 
     variant = "gaussian"
     two_level = False
@@ -107,7 +97,6 @@ class PISOBase(BaseMethod):
 
         raise ValueError(f"unknown PISO direction variant: {self.variant}")
 
-
     def run(
         self,
         problem: Any,
@@ -149,7 +138,6 @@ class PISOBase(BaseMethod):
         update_clip_value = None if update_clip is None else float(update_clip)
 
         for iteration in range(iteration_start, iterations):
-            
             
             calls += 1
             known_gradient = np.asarray(problem.partial_x(x, current_y), dtype=float)

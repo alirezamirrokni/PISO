@@ -49,10 +49,6 @@ def _fingerprint_source_files(project_root: Path, names: list[str]) -> str:
 
 def _source_fingerprint(project_root: Path) -> str:
     
-    
-    
-    
-    
     return _fingerprint_source_files(
         project_root,
         ["ablations/algorithm.py", "ablations/directions.py", "problem.py"],
@@ -60,8 +56,6 @@ def _source_fingerprint(project_root: Path) -> str:
 
 
 def _legacy_source_fingerprint(project_root: Path) -> str:
-    
-    
     
     return _fingerprint_source_files(
         project_root,
@@ -105,8 +99,6 @@ def _job_cache(task: Task) -> JobCache:
         / task.week_id
         / f"run_{task.run_index:04d}"
     )
-    
-    
     
     compatible = [
         _task_fingerprint(
@@ -169,7 +161,6 @@ def _run_task(task: Task) -> dict[str, Any]:
         base_seed=task.base_seed,
         week_id=task.week_id,
         run_index=task.run_index,
-        
         
         variant_seed_key=task.suite_name,
         max_samples=task.max_samples,
@@ -302,8 +293,6 @@ def run_ablation(
         ]
 
         if not plot_only:
-            
-            
             
             pending_tasks: list[Task] = []
             cached = 0
