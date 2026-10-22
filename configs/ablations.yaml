@@ -1,0 +1,64 @@
+experiment:
+  seed: 2024
+  simulations: 100
+  max_samples: 5000
+  metric_samples: 1000
+  report_grid_points: 101
+  weeks: ['08', '12', '21', '25', '29', '32']
+problem:
+  products: 10
+  buyers: 40
+  initial_price: 0.5
+  outside_weight_per_product: 0.1
+  lower_inventory_factor: 0.5
+  upper_inventory_factor: 1.5
+  cost_ratio_low: 2.0
+  cost_ratio_middle: 1.0
+  cost_ratio_high: 3.0
+  rho_low: 0.25
+  rho_high: 0.5
+defaults:
+  piso: {algorithm: piso, direction: gaussian, use_known: true, use_residual: true, radius: 0.4, radius_decay: 0.96, step_size: 0.005, step_decay: 0.98, gamma: 2.0, rho: 0.92, rho_k: 0.0, lambda: 0.0, known_fraction: 0.5, batch_initial: 30, batch_increment: 2, cycle_length: 10}
+  piso2: {algorithm: piso2, direction: gaussian, use_known: true, use_residual: true, radius: 0.4, radius_decay: 0.96, step_size: 0.005, step_decay: 1.0, gamma: 2.0, rho: 0.92, rho_k: 0.0, lambda: 0.25, known_fraction: 0.5, batch_initial: 30, batch_increment: 2, cycle_length: 10}
+suites:
+  components:
+    panels:
+      Gaussian:
+        $\hat{g}_K$: {template: piso, direction: gaussian, use_residual: false}
+        $\gamma\hat{g}_K+R_k$: {template: piso, direction: gaussian, rho: 0.0}
+        PISO: {template: piso, direction: gaussian}
+        PISO$^2$: {template: piso2, direction: gaussian}
+      Cycle:
+        $\hat{g}_K$: {template: piso, direction: orthogonal_cycle, use_residual: false}
+        $\gamma\hat{g}_K+R_k$: {template: piso, direction: orthogonal_cycle, rho: 0.0}
+        PISO: {template: piso, direction: orthogonal_cycle}
+        PISO$^2$: {template: piso2, direction: orthogonal_cycle}
+  gamma:
+    parameter: gamma
+    values: [0.0, 0.5, 1.0, 2.0, 3.0, 4.0]
+    panels: &four_panels
+      GaussianPISO: {template: piso, direction: gaussian}
+      CyclePISO: {template: piso, direction: orthogonal_cycle}
+      GaussianPISO$^2$: {template: piso2, direction: gaussian}
+      CyclePISO$^2$: {template: piso2, direction: orthogonal_cycle}
+  rho:
+    parameter: rho
+    values: [0.0, 0.5, 0.8, 0.92, 0.97, 0.99]
+    panels: *four_panels
+  rho_K:
+    parameter: rho_k
+    values: [0.0, 0.05, 0.1, 0.35, 0.5, 0.7, 0.8, 0.9]
+    panels: *four_panels
+  lambda:
+    parameter: lambda
+    values: [0.0, 0.25, 0.5, 0.75, 1.0]
+    panels:
+      GaussianPISO$^2$: {template: piso2, direction: gaussian}
+      CyclePISO$^2$: {template: piso2, direction: orthogonal_cycle}
+  cycle_length:
+    parameter: cycle_length
+    values: [1, 2, 5, 10]
+    full_y_range: true
+    panels:
+      CyclePISO: {template: piso, direction: orthogonal_cycle}
+      CyclePISO$^2$: {template: piso2, direction: orthogonal_cycle}

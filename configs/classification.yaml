@@ -1,0 +1,22 @@
+experiment:
+  seed: 2024
+  simulations: 100
+  max_samples: 10000
+  taus: [0.5, 1.0, 2.0, 4.0, 8.0]
+problem:
+  dataset_seed: 0
+  train_size: 12272
+  test_size: 1000
+  initial_value: 1.0
+  reward: 2.0
+methods:
+  GZO_NS: {mu0: 10.0, mu_min: 0.1, mu_decay: 0.95, beta0: 1.0, beta_decay: 0.95, alpha0: 0.0, alpha_damping: 0.98, batch_initial: 30, batch_increment: 2, guide_batch_initial: 100, guide_batch_increment: 2}
+  GZO_HS: {mu0: 10.0, mu_min: 0.1, mu_decay: 0.95, beta0: 1.0, beta_decay: 0.95, alpha0: 0.0, alpha_damping: 0.98, window: 1, batch_initial: 30, batch_increment: 2}
+  ZO_TG: {mu0: 10.0, mu_min: 0.1, mu_decay: 0.95, beta0: 1.0, beta_decay: 0.95, batch_initial: 30, batch_increment: 2}
+  ZO_OGVR: {mu0: 10.0, mu_min: 0.1, mu_decay: 0.95, beta0: inverse_sqrt_dimension, beta_decay: 0.95, initial_samples: 20, s_max: 10, M: 0.1, batch_initial: 30, batch_increment: 2}
+  GaussianPISO: {radius: 3.0, radius_decay: 0.95, step_size: 0.7, step_decay: 0.98, gamma: 3.0, rho: 0.98, rho_k: 0.0, known_fraction: 0.67, batch_initial: 30, batch_increment: 2}
+  CyclePISO: {radius: 3.0, radius_decay: 0.95, step_size: 0.7, step_decay: 0.98, gamma: 3.0, rho: 0.98, rho_k: 0.0, known_fraction: 0.67, cycle_length: 6, batch_initial: 30, batch_increment: 2}
+  GaussianPISO2: {radius: 3.0, radius_decay: 0.95, step_size: 0.7, step_decay: 0.98, gamma: 3.0, rho: 0.98, rho_k: 0.0, lambda: 0.05, known_fraction: 0.75, batch_initial: 30, batch_increment: 2}
+  CyclePISO2: {radius: 3.0, radius_decay: 0.95, step_size: 0.7, step_decay: 0.98, gamma: 3.0, rho: 0.98, rho_k: 0.0, lambda: 0.05, known_fraction: 0.75, cycle_length: 6, batch_initial: 30, batch_increment: 2}
+plotting:
+  methods: [GZO_NS, GZO_HS, ZO_TG, ZO_OGVR, GaussianPISO, CyclePISO, GaussianPISO2, CyclePISO2]

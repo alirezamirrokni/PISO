@@ -1,0 +1,30 @@
+experiment:
+  seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119]
+  master_seed: 2026
+  problem_seed: 0
+  max_trajectories: 100000
+  evaluation_interval: 1000
+environment:
+  beta: 5.0
+  eps: 0.5
+  discount: 0.9
+  num_followers: 1
+  horizon: 100
+policy:
+  feature_dim: 32
+  theta_std: 0.1
+  phi_std: 0.2
+methods:
+  VanillaPG: {step_size: 0.05, step_size_schedule: inverse_sqrt, step_size_scale: 100000, step_size_min: 0.02, batch_initial: 100, gradient_clip_norm: 0.25}
+  ZO_TG: {radius: 4.0, radius_schedule: inverse_sqrt, radius_scale: 200000, radius_min: 3.0, step_size: 0.4, step_size_schedule: inverse_sqrt, step_size_scale: 100000, step_size_min: 0.2, batch_initial: 50, gradient_clip_norm: 0.25}
+  ZO_OGVR: {radius: 2.0, radius_schedule: inverse_sqrt, radius_scale: 800000, radius_min: 0.5, step_size: 0.16, step_size_schedule: constant, step_size_min: 0.005, batch_initial: 100, initial_baseline_batch: 100, history_window: 10, distance_weight: 0.0, gradient_clip_norm: null}
+  GZO_NS: {radius: 4.0, radius_schedule: inverse_sqrt, radius_scale: 50000, radius_min: 1.0, step_size: 0.4, step_size_schedule: constant, step_size_min: 0.03, total_batch: 100, known_batch: 20, alpha: 0.9, gradient_clip_norm: 1.0}
+  GZO_HS: {radius: 2.0, radius_schedule: constant, radius_min: 0.5, step_size: 0.4, step_size_schedule: inverse_sqrt, step_size_scale: 25000, step_size_min: 0.04, alpha: 0.9, window: 1, batch_initial: 50, gradient_clip_norm: null}
+  GaussianPISO: {radius: 1.5, radius_schedule: constant, step_size: 1.8, step_size_schedule: inverse_sqrt, step_size_scale: 100000, step_size_min: 1.0, gamma: 0.75, rho: 0.997, rho_k: 0.9, known_fraction: 0.5, total_batch: 100}
+  CyclePISO: {radius: 1.5, radius_schedule: constant, step_size: 1.8, step_size_schedule: inverse_sqrt, step_size_scale: 100000, step_size_min: 1.0, gamma: 0.75, rho: 0.997, rho_k: 0.9, known_fraction: 0.5, total_batch: 100, cycle_length: 24}
+  GaussianPISO2: {radius: 1.5, radius_schedule: constant, step_size: 1.8, step_size_schedule: inverse_sqrt, step_size_scale: 100000, step_size_min: 1.0, gamma: 1.0, rho: 0.997, rho_k: 0.9, known_fraction: 0.5, total_batch: 100, lambda: 0.01}
+  CyclePISO2: {radius: 1.5, radius_schedule: constant, step_size: 1.8, step_size_schedule: inverse_sqrt, step_size_scale: 100000, step_size_min: 1.0, gamma: 1.0, rho: 0.997, rho_k: 0.9, known_fraction: 0.5, total_batch: 100, lambda: 0.01, cycle_length: 16}
+  PePG: {step_size: 0.5, step_size_schedule: inverse_sqrt, step_size_scale: 100000, step_size_min: 0.1, batch_initial: 100, gradient_clip_norm: 0.25, transition_probability_floor: 1.0e-12}
+report:
+  smoothing_window: 5
+  plotting_methods: [VanillaPG, ZO_TG, ZO_OGVR, GZO_NS, GZO_HS, GaussianPISO, CyclePISO, GaussianPISO2, CyclePISO2, PePG]
